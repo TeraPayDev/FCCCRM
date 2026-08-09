@@ -1,36 +1,33 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.router import api_router
+from app.core.config import get_settings
+
+settings = get_settings()
+
 app = FastAPI(
-    title="CRAM API",
-    description="Climate Risk Analytics Management Platform API",
-    version="0.1.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://10.1.11.7:3000",
-        "http://localhost:3000",
-    ],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(api_router, prefix=settings.api_v1_prefix)
 
-@app.get("/")
+
+@app.get("/", tags=["system"])
 async def root() -> dict[str, str]:
+    """Return a minimal API root response."""
     return {
-        "name": "CRAM API",
+        "name": settings.app_name,
         "status": "running",
-    }
-
-
-@app.get("/api/v1/health")
-async def health() -> dict[str, str]:
-    return {
-        "status": "healthy",
-        "service": "cram-api",
-        "version": "0.1.0",
+        "version": settings.app_version,
     }
