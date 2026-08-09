@@ -14,6 +14,7 @@ services:
 
     volumes:
       - cram_postgres_data:/var/lib/postgresql
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
 
     networks:
       - cram_internal
@@ -23,13 +24,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
 
   redis:
     image: redis:8-alpine
     container_name: cram-redis
     restart: unless-stopped
-
+      
     volumes:
       - cram_redis_data:/data
 
@@ -41,12 +43,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
 
   geoserver:
     image: docker.osgeo.org/geoserver:3.0.0
     container_name: cram-geoserver
     restart: unless-stopped
+    
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
 
     volumes:
       - cram_geoserver_data:/opt/geoserver_data
@@ -56,6 +63,47 @@ services:
 
     networks:
       - cram_internal
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --fail 'http://localhost:8080/geoserver/web/wicket/resource/org.geoserver.web.GeoServerBasePage/img/logo.png' || exit 1"
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+
+
+  object-storage:
+    image: rustfs/rustfs:1.0.0-beta.12
+    container_name: cram-object-storage
+    restart: unless-stopped
+
+    environment:
+      RUSTFS_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /data/logs/
+
+    command: ["/data"]
+
+    volumes:
+      - cram_object_storage_data:/data
+
+    networks:
+      - cram_internal
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 
   api:
@@ -70,6 +118,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       GEOSERVER_URL: ${GEOSERVER_URL}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET}
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION}
 
     ports:
       - "8000:8000"
@@ -81,8 +134,26 @@ services:
       redis:
         condition: service_healthy
 
+      object-storage:
+        condition: service_healthy
+
     networks:
       - cram_internal
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "uv",
+          "run",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3).read()"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 
   web:
@@ -99,10 +170,24 @@ services:
       - "3000:3000"
 
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
     networks:
       - cram_internal
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 
 networks:
@@ -121,3 +206,6 @@ volumes:
 
   cram_geoserver_data:
     name: cram_geoserver_data
+
+  cram_object_storage_data:
+    name: cram_object_storage_data
