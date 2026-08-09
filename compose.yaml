@@ -1,0 +1,123 @@
+name: cram
+
+services:
+
+  db:
+    image: postgis/postgis:18-3.6
+    container_name: cram-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - cram_postgres_data:/var/lib/postgresql
+
+    networks:
+      - cram_internal
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  redis:
+    image: redis:8-alpine
+    container_name: cram-redis
+    restart: unless-stopped
+
+    volumes:
+      - cram_redis_data:/data
+
+    networks:
+      - cram_internal
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:3.0.0
+    container_name: cram-geoserver
+    restart: unless-stopped
+
+    volumes:
+      - cram_geoserver_data:/opt/geoserver_data
+
+    ports:
+      - "8080:8080"
+
+    networks:
+      - cram_internal
+
+
+  api:
+    build:
+      context: ./apps/api
+
+    container_name: cram-api
+    restart: unless-stopped
+
+    environment:
+      APP_ENV: ${APP_ENV}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      GEOSERVER_URL: ${GEOSERVER_URL}
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    networks:
+      - cram_internal
+
+
+  web:
+    build:
+      context: ./apps/web
+
+    container_name: cram-web
+    restart: unless-stopped
+
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - api
+
+    networks:
+      - cram_internal
+
+
+networks:
+
+  cram_internal:
+    name: cram_internal
+
+
+volumes:
+
+  cram_postgres_data:
+    name: cram_postgres_data
+
+  cram_redis_data:
+    name: cram_redis_data
+
+  cram_geoserver_data:
+    name: cram_geoserver_data
