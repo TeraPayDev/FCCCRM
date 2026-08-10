@@ -28,8 +28,8 @@ SCHEMA = "cram"
 
 def upgrade() -> None:
     op.execute(sa.text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}"))
-    op.execute(sa.text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    op.execute(sa.text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+    op.execute(sa.text("CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public"))
+    op.execute(sa.text("CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public"))
 
     op.create_table(
         "organisations",
@@ -778,7 +778,4 @@ def downgrade() -> None:
         schema=SCHEMA,
     )
     op.drop_table("organisations", schema=SCHEMA)
-
-    op.execute(sa.text("DROP EXTENSION IF EXISTS postgis"))
-    op.execute(sa.text("DROP EXTENSION IF EXISTS pgcrypto"))
     op.execute(sa.text(f"DROP SCHEMA IF EXISTS {SCHEMA}"))
