@@ -2,11 +2,9 @@ name: CRAM CI
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,83 +13,45 @@ jobs:
   frontend-quality:
     name: Frontend quality
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: apps/web
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           package-manager-cache: false
-
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@11.20.0 --activate
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint frontend
-        run: pnpm lint
-
-      - name: Check frontend formatting
-        run: pnpm format:check
-
-      - name: Type-check frontend
-        run: pnpm typecheck
-
-      - name: Run frontend tests
-        run: pnpm test
-
-      - name: Build frontend
-        run: pnpm build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
 
   backend-quality:
     name: Backend quality
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: apps/api
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          version: "0.12.3"
-
-      - name: Install Python
-        run: uv python install 3.14
-
-      - name: Install backend dependencies
-        run: uv sync --frozen
-
-      - name: Lint backend
-        run: uv run ruff check app tests
-
-      - name: Check backend formatting
-        run: uv run ruff format --check app tests
-
-      - name: Type-check backend
-        run: uv run mypy app tests
-
-      - name: Run backend tests
-        run: uv run pytest
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+      - run: uv python install 3.14
+      - run: uv sync --frozen
+      - run: uv run ruff check app tests migrations
+      - run: uv run ruff format --check app tests migrations
+      - run: uv run mypy app tests
+      - run: uv run pytest
 
   migration-gate:
     name: Migration validation
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgis/postgis:18-3.6
@@ -106,82 +66,58 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     env:
       DATABASE_URL: postgresql+psycopg://cram:cram_ci_password@localhost:5432/cram
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
-        with:
-          version: "0.12.3"
-
-      - name: Install Python
-        run: uv python install 3.14
-
-      - name: Validate Alembic migrations when present
-        shell: bash
-        run: |
-          if [[ -f "apps/api/alembic.ini" ]]; then
-            cd apps/api
-            uv sync --frozen
-            uv run alembic upgrade head
-          else
-            echo "Alembic migrations are not present yet; migration execution activates when Milestone 4 introduces them."
-          fi
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+      - run: uv python install 3.14
+      - name: Install backend dependencies
+        working-directory: apps/api
+        run: uv sync --frozen
+      - name: Upgrade migrations
+        working-directory: apps/api
+        run: uv run alembic upgrade head
+      - name: Verify database foundation
+        working-directory: apps/api
+        run: uv run python -m app.db.verify_foundation
+      - name: Roll back development migration
+        working-directory: apps/api
+        run: uv run alembic downgrade base
+      - name: Re-apply development migration
+        working-directory: apps/api
+        run: uv run alembic upgrade head
 
   container-build:
     name: Container build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Build API container
-        run: docker build --tag cram-api-ci ./apps/api
-
-      - name: Build web container
-        run: docker build --tag cram-web-ci ./apps/web
+      - uses: actions/checkout@v7
+      - run: docker build --tag cram-api-ci ./apps/api
+      - run: docker build --tag cram-web-ci ./apps/web
 
   dependency-security:
     name: Dependency security
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           package-manager-cache: false
-
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@11.20.0 --activate
-
       - name: Install frontend dependencies
         working-directory: apps/web
         run: pnpm install --frozen-lockfile
-
       - name: Audit frontend dependencies
         working-directory: apps/web
         run: pnpm audit --audit-level high
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
-        with:
-          version: "0.12.3"
-
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
       - name: Export backend runtime dependencies
         working-directory: apps/api
         run: uv export --frozen --no-dev --no-hashes --format requirements-txt --output-file /tmp/cram-api-requirements.txt
-
       - name: Audit backend dependencies
         run: uvx pip-audit -r /tmp/cram-api-requirements.txt
