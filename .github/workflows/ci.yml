@@ -181,7 +181,7 @@ jobs:
 
       - name: Export backend runtime dependencies
         working-directory: apps/api
-        run: uv export --frozen --no-dev --format requirements-txt --output-file /tmp/cram-api-requirements.txt
+        run: uv export --frozen --no-dev --no-hashes --format requirements-txt --output-file /tmp/cram-api-requirements.txt
 
       - name: Audit backend dependencies
         run: uvx pip-audit -r /tmp/cram-api-requirements.txt
