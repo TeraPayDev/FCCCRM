@@ -67,7 +67,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      APP_ENV: testing
+      AUTH_JWT_SECRET: cram-ci-only-jwt-secret-32-bytes-minimum-value
       DATABASE_URL: postgresql+psycopg://cram:cram_ci_password@localhost:5432/cram
+      RUN_DB_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
@@ -78,13 +81,19 @@ jobs:
       - name: Upgrade migrations
         working-directory: apps/api
         run: uv run alembic upgrade head
+      - name: Apply RBAC seed matrix
+        working-directory: apps/api
+        run: uv run python -m app.db.seed
       - name: Verify database foundation
         working-directory: apps/api
         run: uv run python -m app.db.verify_foundation
-      - name: Roll back development migration
+      - name: Run authentication/RBAC integration tests
+        working-directory: apps/api
+        run: uv run pytest tests/test_auth_integration.py
+      - name: Roll back development migrations
         working-directory: apps/api
         run: uv run alembic downgrade base
-      - name: Re-apply development migration
+      - name: Re-apply development migrations
         working-directory: apps/api
         run: uv run alembic upgrade head
 

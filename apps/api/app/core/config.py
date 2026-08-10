@@ -1,6 +1,9 @@
 from functools import lru_cache
 
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEV_JWT_SECRET = "cram-development-only-jwt-secret-change-before-non-development"
 
 
 class Settings(BaseSettings):
@@ -13,6 +16,12 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     cors_origins: str = "http://10.1.11.7:3000,http://localhost:3000"
 
+    auth_jwt_secret: SecretStr = SecretStr(DEV_JWT_SECRET)
+    auth_access_token_minutes: int = 15
+    auth_refresh_token_minutes: int = 60 * 24 * 7
+    auth_failed_login_limit: int = 5
+    auth_lock_minutes: int = 15
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -23,6 +32,17 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         """Return configured CORS origins as a normalized list."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def validate_auth_secret(self) -> Settings:
+        if (
+            self.app_env.lower() not in {"development", "test", "testing"}
+            and self.auth_jwt_secret.get_secret_value() == DEV_JWT_SECRET
+        ):
+            raise ValueError(
+                "AUTH_JWT_SECRET must be explicitly configured outside development/test."
+            )
+        return self
 
 
 @lru_cache
