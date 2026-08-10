@@ -1,0 +1,187 @@
+name: CRAM CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-quality:
+    name: Frontend quality
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.20.0 --activate
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint frontend
+        run: pnpm lint
+
+      - name: Check frontend formatting
+        run: pnpm format:check
+
+      - name: Type-check frontend
+        run: pnpm typecheck
+
+      - name: Run frontend tests
+        run: pnpm test
+
+      - name: Build frontend
+        run: pnpm build
+
+  backend-quality:
+    name: Backend quality
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.3"
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Install backend dependencies
+        run: uv sync --frozen
+
+      - name: Lint backend
+        run: uv run ruff check app tests
+
+      - name: Check backend formatting
+        run: uv run ruff format --check app tests
+
+      - name: Type-check backend
+        run: uv run mypy app tests
+
+      - name: Run backend tests
+        run: uv run pytest
+
+  migration-gate:
+    name: Migration validation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_DB: cram
+          POSTGRES_USER: cram
+          POSTGRES_PASSWORD: cram_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cram -d cram"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://cram:cram_ci_password@localhost:5432/cram
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.3"
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Validate Alembic migrations when present
+        shell: bash
+        run: |
+          if [[ -f "apps/api/alembic.ini" ]]; then
+            cd apps/api
+            uv sync --frozen
+            uv run alembic upgrade head
+          else
+            echo "Alembic migrations are not present yet; migration execution activates when Milestone 4 introduces them."
+          fi
+
+  container-build:
+    name: Container build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build API container
+        run: docker build --tag cram-api-ci ./apps/api
+
+      - name: Build web container
+        run: docker build --tag cram-web-ci ./apps/web
+
+  dependency-security:
+    name: Dependency security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.20.0 --activate
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit frontend dependencies
+        working-directory: apps/web
+        run: pnpm audit --audit-level high
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.3"
+
+      - name: Export backend runtime dependencies
+        working-directory: apps/api
+        run: uv export --frozen --no-dev --no-hashes --format requirements-txt --output-file /tmp/cram-api-requirements.txt
+
+      - name: Audit backend dependencies
+        run: uvx pip-audit -r /tmp/cram-api-requirements.txt

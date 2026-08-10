@@ -21,9 +21,15 @@ export function SystemStatusPage() {
       <p>Climate Risk Analytics Management Platform</p>
       <hr />
       <h2>Development Environment</h2>
-      <p><strong>Frontend:</strong> Running</p>
-      <p><strong>API:</strong> {apiStatus}</p>
-      <p><Link to="/about">About this skeleton</Link></p>
+      <p>
+        <strong>Frontend:</strong> Running
+      </p>
+      <p>
+        <strong>API:</strong> {apiStatus}
+      </p>
+      <p>
+        <Link to="/about">About this skeleton</Link>
+      </p>
     </main>
   );
 }
