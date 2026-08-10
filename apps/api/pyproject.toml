@@ -8,7 +8,9 @@ dependencies = [
     "fastapi>=0.141.1",
     "geoalchemy2>=0.20.0,<0.21",
     "psycopg[binary]>=3.3.4",
+    "pwdlib[argon2]>=0.3.0,<1",
     "pydantic-settings>=2.15.0",
+    "pyjwt>=2.10.1,<3",
     "sqlalchemy>=2.0.51,<2.1",
     "uvicorn[standard]>=0.52.1",
 ]
@@ -19,6 +21,9 @@ dev = ["httpx", "mypy", "pytest", "ruff"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "database: tests requiring the PostgreSQL/PostGIS CI database",
+]
 
 [tool.ruff]
 target-version = "py314"
