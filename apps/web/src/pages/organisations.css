@@ -1,0 +1,124 @@
+.organisation-page {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 40px 0 64px;
+}
+
+.organisation-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  align-items: end;
+  margin-bottom: 28px;
+}
+
+.organisation-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.organisation-header p {
+  max-width: 720px;
+}
+
+.organisation-header nav {
+  display: flex;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.organisation-message {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.organisation-panel {
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: var(--bg);
+}
+
+.organisation-panel h2 {
+  margin-top: 0;
+}
+
+.organisation-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.45fr) minmax(260px, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.organisation-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.organisation-form input,
+.organisation-table-wrap select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--bg);
+  color: inherit;
+}
+
+.organisation-form button,
+.organisation-actions button {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.organisation-table-wrap {
+  overflow-x: auto;
+}
+
+.organisation-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.organisation-table-wrap th,
+.organisation-table-wrap td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.organisation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .organisation-page {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .organisation-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .organisation-form {
+    grid-template-columns: 1fr;
+  }
+}

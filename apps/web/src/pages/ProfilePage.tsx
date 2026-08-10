@@ -52,6 +52,9 @@ export function ProfilePage() {
             <button type="button" onClick={logout}>
               Sign out
             </button>
+            {user.permissions.includes("users.manage") && (
+              <Link to="/organisations">Organisation administration</Link>
+            )}
           </>
         )}
         <Link to="/">System status</Link>
