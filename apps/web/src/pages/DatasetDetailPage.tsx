@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  api,
   dataPlatformApi,
+  type CurrentUser,
   type Dataset,
   type DatasetField,
   type DatasetSource,
@@ -10,12 +12,14 @@ import {
   type ValidationRun,
 } from "../api/client";
 import { loadTokens } from "../auth/session";
+import { PageHeader, StatusBadge } from "../components/Page";
 import "./datasets.css";
 
 export function DatasetDetailPage() {
   const { datasetId = "" } = useParams();
   const navigate = useNavigate();
   const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [me, setMe] = useState<CurrentUser | null>(null);
   const [sources, setSources] = useState<DatasetSource[]>([]);
   const [fields, setFields] = useState<DatasetField[]>([]);
   const [versions, setVersions] = useState<DatasetVersion[]>([]);
@@ -53,17 +57,19 @@ export function DatasetDetailPage() {
     let cancelled = false;
     async function loadInitial() {
       try {
-        const [detail, sourceData, fieldData, versionData] = await Promise.all([
+        const [detail, sourceData, fieldData, versionData, currentUser] = await Promise.all([
           dataPlatformApi.dataset(accessToken, datasetId),
           dataPlatformApi.sources(accessToken, datasetId),
           dataPlatformApi.fields(accessToken, datasetId),
           dataPlatformApi.versions(accessToken, datasetId),
+          api.me(accessToken),
         ]);
         if (!cancelled) {
           setDataset(detail);
           setSources(sourceData);
           setFields(fieldData);
           setVersions(versionData);
+          setMe(currentUser);
         }
       } catch (error) {
         if (!cancelled)
@@ -179,149 +185,280 @@ export function DatasetDetailPage() {
   if (!dataset)
     return (
       <main className="datasets-page">
-        <p>{message || "Loading dataset..."}</p>
+        <section className="datasets-card">
+          <p>{message || "Loading dataset…"}</p>
+        </section>
       </main>
     );
 
+  const canManage = me?.permissions.includes("datasets.manage") ?? false;
+  const canUpload = me?.permissions.includes("datasets.upload") ?? false;
+  const canValidate = me?.permissions.includes("datasets.validate") ?? false;
+  const canApprove = me?.permissions.includes("datasets.approve") ?? false;
+  const canPublish = me?.permissions.includes("datasets.publish") ?? false;
+
+  const latestVersion = versions[0];
+  const lifecycle = [
+    "DRAFT",
+    "UPLOADED",
+    "VALIDATING",
+    "VALIDATED",
+    "PENDING_APPROVAL",
+    "APPROVED",
+    "PUBLISHED",
+  ];
+  const currentIndex = latestVersion ? lifecycle.indexOf(latestVersion.status) : -1;
+
   return (
     <main className="datasets-page">
-      <header className="datasets-header">
-        <div>
-          <h1>{dataset.name}</h1>
-          <p>
-            {dataset.code} · {dataset.status} · {dataset.sensitivity}
-          </p>
-        </div>
-        <Link to="/datasets">Catalogue</Link>
-      </header>
+      <PageHeader
+        eyebrow={`Dataset · ${dataset.code}`}
+        title={dataset.name}
+        description={
+          dataset.description ??
+          "Versioned institutional dataset with governed source, validation and publication history."
+        }
+        actions={
+          <Link className="button" to="/datasets">
+            ← Catalogue
+          </Link>
+        }
+      />
       {message && <p className="datasets-message">{message}</p>}
+
+      <section className="datasets-card lifecycle-card">
+        <div className="card-header">
+          <div>
+            <h2>Governance lifecycle</h2>
+            <p className="card-subtitle">Current progress for the latest dataset version.</p>
+          </div>
+          {latestVersion ? (
+            <StatusBadge value={latestVersion.status} />
+          ) : (
+            <StatusBadge value="Draft" />
+          )}
+        </div>
+        <div className="lifecycle-track">
+          {lifecycle.map((step, index) => (
+            <div className={`lifecycle-step${index <= currentIndex ? " complete" : ""}`} key={step}>
+              <span>{index + 1}</span>
+              <small>{step.replaceAll("_", " ")}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="datasets-grid">
         <article className="datasets-card">
-          <h2>Metadata</h2>
+          <div className="card-header">
+            <div>
+              <h2>Dataset metadata</h2>
+              <p className="card-subtitle">Catalogue identity and institutional ownership.</p>
+            </div>
+            <StatusBadge value={dataset.status} />
+          </div>
           <dl>
-            <dt>Owner</dt>
+            <dt>Owner organisation</dt>
             <dd>{dataset.owner_organisation_id}</dd>
+            <dt>Sensitivity</dt>
+            <dd>{dataset.sensitivity}</dd>
             <dt>Expected format</dt>
             <dd>{dataset.expected_format}</dd>
             <dt>Update frequency</dt>
             <dd>{dataset.update_frequency ?? "Not specified"}</dd>
+            <dt>Category</dt>
+            <dd>{dataset.category ?? "Not specified"}</dd>
           </dl>
         </article>
+
         <article className="datasets-card">
-          <h2>Sources</h2>
-          {sources.length ? (
-            sources.map((source) => (
-              <p key={source.id}>
-                <strong>{source.name}</strong> · {source.source_type} ·{" "}
-                {source.update_method ?? "unspecified update method"}
-                {source.connection_secret_ref
-                  ? ` · secret ref: ${source.connection_secret_ref}`
-                  : ""}
+          <div className="card-header">
+            <div>
+              <h2>Sources</h2>
+              <p className="card-subtitle">
+                Origin and update method. Credentials are never stored here.
               </p>
-            ))
+            </div>
+          </div>
+          {sources.length ? (
+            <div className="source-list">
+              {sources.map((source) => (
+                <div className="source-item" key={source.id}>
+                  <strong>{source.name}</strong>
+                  <span>
+                    {source.source_type} · {source.update_method ?? "Update method not specified"}
+                  </span>
+                  {source.connection_secret_ref && <code>{source.connection_secret_ref}</code>}
+                </div>
+              ))}
+            </div>
           ) : (
-            <p>No source configured yet.</p>
+            <p className="card-subtitle">No source configured yet.</p>
           )}
-          <form className="dataset-form" onSubmit={(event) => void addSource(event)}>
-            <label>
-              Source name
-              <input
-                required
-                value={sourceName}
-                onChange={(event) => setSourceName(event.target.value)}
-              />
-            </label>
-            <label>
-              Update method
-              <input
-                value={updateMethod}
-                onChange={(event) => setUpdateMethod(event.target.value)}
-              />
-            </label>
-            <label>
-              Secret reference
-              <input
-                value={secretRef}
-                onChange={(event) => setSecretRef(event.target.value)}
-                placeholder="secret://provider/connection"
-              />
-            </label>
-            <button type="submit">Add source</button>
-          </form>
+          {canManage && (
+            <form className="dataset-form source-form" onSubmit={(event) => void addSource(event)}>
+              <label>
+                Source name
+                <input
+                  required
+                  value={sourceName}
+                  onChange={(event) => setSourceName(event.target.value)}
+                />
+              </label>
+              <label>
+                Update method
+                <input
+                  value={updateMethod}
+                  onChange={(event) => setUpdateMethod(event.target.value)}
+                />
+              </label>
+              <label>
+                Secret reference
+                <input
+                  value={secretRef}
+                  onChange={(event) => setSecretRef(event.target.value)}
+                  placeholder="secret://provider/connection"
+                />
+              </label>
+              <button type="submit">Add source</button>
+            </form>
+          )}
         </article>
       </section>
+
       <section className="datasets-card">
-        <h2>Schema / validation fields</h2>
-        <form className="dataset-form" onSubmit={(event) => void addField(event)}>
-          <label>
-            Field
-            <input
-              required
-              value={fieldName}
-              onChange={(event) => setFieldName(event.target.value)}
-            />
-          </label>
-          <label>
-            Type
-            <select value={fieldType} onChange={(event) => setFieldType(event.target.value)}>
-              <option>string</option>
-              <option>number</option>
-              <option>integer</option>
-              <option>datetime</option>
-            </select>
-          </label>
-          <button type="submit">Add required field</button>
-        </form>
-        <ul>
-          {fields.map((field) => (
-            <li key={field.id}>
-              {field.ordinal}: {field.name} ({field.data_type}){" "}
-              {field.is_required ? "required" : "optional"}
-            </li>
-          ))}
-        </ul>
+        <div className="card-header">
+          <div>
+            <h2>Schema and validation fields</h2>
+            <p className="card-subtitle">
+              Reusable field metadata drives validation without hard-coding climate assumptions.
+            </p>
+          </div>
+          <span className="status-badge">{fields.length} fields</span>
+        </div>
+        {canManage && (
+          <form className="dataset-form" onSubmit={(event) => void addField(event)}>
+            <label>
+              Field name
+              <input
+                required
+                value={fieldName}
+                onChange={(event) => setFieldName(event.target.value)}
+              />
+            </label>
+            <label>
+              Data type
+              <select value={fieldType} onChange={(event) => setFieldType(event.target.value)}>
+                <option>string</option>
+                <option>number</option>
+                <option>integer</option>
+                <option>datetime</option>
+              </select>
+            </label>
+            <button type="submit">Add required field</button>
+          </form>
+        )}
+        {fields.length ? (
+          <div className="field-grid">
+            {fields.map((field) => (
+              <div className="field-pill" key={field.id}>
+                <strong>{field.name}</strong>
+                <span>
+                  {field.data_type} · {field.is_required ? "required" : "optional"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="card-subtitle">No field definitions stored yet.</p>
+        )}
       </section>
+
+      {canUpload && (
+        <section className="datasets-card upload-card">
+          <div>
+            <h2>Upload CSV source file</h2>
+            <p className="card-subtitle">
+              The original file is preserved unchanged. CRAM records checksum, size, uploader and
+              timestamp.
+            </p>
+          </div>
+          <form className="upload-form" onSubmit={(event) => void upload(event)}>
+            <label className="file-drop">
+              Choose CSV
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                required
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+              <span>{file ? file.name : "Select a UTF-8 CSV file"}</span>
+            </label>
+            <button className="button-primary" type="submit" disabled={!file}>
+              Upload & create version
+            </button>
+          </form>
+        </section>
+      )}
+
       <section className="datasets-card">
-        <h2>Upload CSV</h2>
-        <form className="dataset-form" onSubmit={(event) => void upload(event)}>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            required
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-          <button type="submit">Upload original file</button>
-        </form>
-      </section>
-      <section className="datasets-card">
-        <h2>Version history</h2>
+        <div className="card-header">
+          <div>
+            <h2>Version history</h2>
+            <p className="card-subtitle">
+              Every accepted upload remains independently traceable through validation and
+              publishing.
+            </p>
+          </div>
+          <span className="status-badge">{versions.length} versions</span>
+        </div>
         <div className="dataset-versions">
           {versions.map((version) => (
             <article key={version.id} className="dataset-version">
               <header>
-                <strong>Version {version.version_number}</strong>
-                <span>{version.status}</span>
+                <div>
+                  <strong>Version {version.version_number}</strong>
+                  <span className="version-date">
+                    {new Date(version.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <StatusBadge value={version.status} />
               </header>
               <p>
                 Rows: {version.row_count ?? "—"} · SHA-256:{" "}
                 {version.checksum_sha256?.slice(0, 16) ?? "—"}…
               </p>
               <div className="dataset-actions">
-                <button type="button" onClick={() => void validate(version.id)}>
-                  Validate
-                </button>
-                <button type="button" onClick={() => void showValidations(version.id)}>
-                  Results
-                </button>
-                {version.status === "VALIDATED" && (
-                  <button type="button" onClick={() => void submit(version.id)}>
-                    Submit
+                {canValidate && (
+                  <button type="button" onClick={() => void validate(version.id)}>
+                    Run validation
                   </button>
                 )}
-                {version.status === "APPROVED" && (
-                  <button type="button" onClick={() => void publish(version.id)}>
-                    Publish
+                <button type="button" onClick={() => void showValidations(version.id)}>
+                  Validation results
+                </button>
+                {version.status === "VALIDATED" && canManage && (
+                  <button
+                    className="button-primary"
+                    type="button"
+                    onClick={() => void submit(version.id)}
+                  >
+                    Submit for approval
                   </button>
+                )}
+                {version.status === "APPROVED" && canPublish && (
+                  <button
+                    className="button-primary"
+                    type="button"
+                    onClick={() => void publish(version.id)}
+                  >
+                    Publish version
+                  </button>
+                )}
+                {version.status === "PENDING_APPROVAL" && canApprove && (
+                  <Link className="button" to="/approvals">
+                    Review in approval queue
+                  </Link>
                 )}
               </div>
               {validations[version.id]?.map((run) => (
@@ -335,8 +472,8 @@ export function DatasetDetailPage() {
                         issue.severity === "ERROR" ? "validation-error" : "validation-warning"
                       }
                     >
-                      {issue.severity} row {issue.row_number ?? "—"} {issue.field_name ?? ""}:{" "}
-                      {issue.message}
+                      {issue.severity} · row {issue.row_number ?? "—"} ·{" "}
+                      {issue.field_name ?? "record"}: {issue.message}
                     </p>
                   ))}
                 </div>

@@ -19,7 +19,7 @@ export function LoginPage() {
     try {
       const tokens = await api.login(username, password);
       saveTokens(tokens);
-      navigate("/profile");
+      navigate("/");
     } catch (error) {
       setMessage(error instanceof ApiError ? error.message : "Login failed.");
     } finally {
@@ -28,34 +28,55 @@ export function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <h1>CRAM Sign In</h1>
-        <p>Authenticate with your CRAM account.</p>
-        <form onSubmit={submit}>
-          <label>
-            Username or email
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          {message && <p className="auth-error">{message}</p>}
-          <button type="submit" disabled={busy}>
-            {busy ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-        <Link to="/">Return to system status</Link>
+    <main className="login-layout">
+      <section className="login-brand-panel">
+        <div className="login-brand-mark">CR</div>
+        <p className="login-kicker">Freetown City Council</p>
+        <h1>Climate data, governance and spatial intelligence in one workspace.</h1>
+        <p>
+          CRAM connects institutional ownership, versioned data, validation, approval, GIS and audit
+          controls through a single governed platform.
+        </p>
+        <div className="login-foundation">
+          <span>Gate 2</span>
+          <strong>Data Platform Complete</strong>
+        </div>
+      </section>
+      <section className="login-form-panel">
+        <div className="auth-card">
+          <p className="page-eyebrow">Secure workspace</p>
+          <h2>Sign in to CRAM</h2>
+          <p className="auth-intro">
+            Use your assigned CRAM account. Access is determined by your effective permissions and
+            organisation.
+          </p>
+          <form onSubmit={submit}>
+            <label>
+              Username or email
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            {message && <p className="notice notice-error">{message}</p>}
+            <button className="button-primary" type="submit" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+          <Link className="auth-back" to="/">
+            ← Return to platform overview
+          </Link>
+        </div>
       </section>
     </main>
   );
