@@ -95,3 +95,13 @@ __all__ = [
     "role_permissions",
     "user_roles",
 ]
+
+from app.models.engineering import (
+    IntegrationConnector as IntegrationConnector,
+)
+from app.models.engineering import (
+    IntegrationRun as IntegrationRun,
+)
+from app.models.engineering import (
+    ProcessingSchedule as ProcessingSchedule,
+)

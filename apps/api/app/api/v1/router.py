@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints.audit import router as audit_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.datasets import router as datasets_router
+from app.api.v1.endpoints.engineering import router as engineering_router
 from app.api.v1.endpoints.gis import router as gis_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.organisations import router as organisations_router
@@ -19,3 +20,4 @@ api_router.include_router(datasets_router)
 api_router.include_router(organisations_router)
 
 api_router.include_router(roadmap_router)
+api_router.include_router(engineering_router)

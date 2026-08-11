@@ -495,3 +495,17 @@ export const roadmapApi = {
       body: payload ? JSON.stringify(payload) : undefined,
     }),
 };
+
+
+export const citizenApi = {
+  submit: (payload: Record<string, unknown>) => requestJson("/api/v1/citizen-reports", unknownObjectSchema, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  }),
+  uploadPhoto: async (reportId: string, file: File) => {
+    const response = await fetch(`${env.VITE_API_URL}/api/v1/citizen-reports/${reportId}/attachments`, {
+      method: "POST", headers: { "Content-Type": file.type, "X-Filename": file.name }, body: file,
+    });
+    if (!response.ok) throw new ApiError(await errorMessage(response), response.status);
+    return unknownObjectSchema.parse(await response.json());
+  },
+};

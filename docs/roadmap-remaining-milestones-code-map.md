@@ -61,3 +61,18 @@ Implemented in code: security headers, API safety-net rate limiting, stricter ci
 ## External dependencies intentionally not invented
 
 The code intentionally leaves the following as governed configuration/approval dependencies: authoritative geographic boundaries/CRS, heat methodology/thresholds, flood probability model, vulnerability normalization/weights, tree survival/canopy methodology, citizen privacy/moderation rules, final RBAC/approval matrix, production cloud/data-residency/RPO/RTO/MFA/SSO decisions, and report/knowledge-hub templates.
+
+
+## Post-Milestone-26 engineering extension
+
+The completed Milestones 0-26 baseline is preserved. Additional production-readiness engineering is implemented as Extensions 27-32:
+
+- Predictive/scenario engines: `apps/api/app/services/predictive.py` and `/api/v1/analytics/predict/*`.
+- Mobile/offline citizen reporting: `apps/web/src/pages/CitizenReportPage.tsx` at `/report-hazard`.
+- ETL scheduling/monitoring: `processing_schedules`, worker scheduling, `/api/v1/processing/schedules`, `/api/v1/processing/monitoring`.
+- Reporting/executive: authenticated report download and `/api/v1/dashboards/executive-summary`.
+- Production readiness: `load-smoke.py`, `disaster-recovery-drill.sh`, and operations guidance.
+- Institutional sandbox adapters: `integration_connectors`, `integration_runs`, and `/api/v1/integrations/connectors`.
+- Schema migration: `20260811_0006_engineering_extension.py`.
+
+Live institutional activation, scientific calibration/approval, production HA topology, formal load targets and isolated DR acceptance remain governed external/environment gates.
