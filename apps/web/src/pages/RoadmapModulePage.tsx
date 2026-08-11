@@ -12,7 +12,10 @@ const configs: Record<
   processing: {
     title: "ETL / Processing",
     subtitle: "Background jobs, retries, idempotency and processor status.",
-    endpoints: [["Jobs", "/api/v1/processing/jobs"], ["Schedules", "/api/v1/processing/schedules"]],
+    endpoints: [
+      ["Jobs", "/api/v1/processing/jobs"],
+      ["Schedules", "/api/v1/processing/schedules"],
+    ],
   },
   heat: {
     title: "Heat Analytics",
