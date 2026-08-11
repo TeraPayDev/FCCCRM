@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { api, type CurrentUser } from "../api/client";
 import { clearTokens, loadTokens } from "../auth/session";
+import { PageHeader, StatusBadge } from "../components/Page";
 import "./auth.css";
+
+function initials(value: string) {
+  return value
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -15,13 +25,21 @@ export function ProfilePage() {
       navigate("/login");
       return;
     }
+    let cancelled = false;
     api
       .me(tokens.access_token)
-      .then(setUser)
+      .then((value) => {
+        if (!cancelled) setUser(value);
+      })
       .catch(() => {
-        clearTokens();
-        setError("Your session is invalid or expired.");
+        if (!cancelled) {
+          clearTokens();
+          setError("Your session is invalid or expired.");
+        }
       });
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   async function logout() {
@@ -32,41 +50,64 @@ export function ProfilePage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card auth-profile">
-        <h1>CRAM Identity</h1>
-        {error && <p className="auth-error">{error}</p>}
-        {!user && !error && <p>Loading account...</p>}
-        {user && (
-          <>
-            <dl>
-              <dt>Username</dt>
-              <dd>{user.username}</dd>
-              <dt>Email</dt>
-              <dd>{user.email}</dd>
+    <main className="profile-page">
+      <PageHeader
+        eyebrow="Identity & access"
+        title="My CRAM access"
+        description="Review the account, institutional context, roles and effective permissions applied to this session."
+        actions={
+          <button type="button" onClick={() => void logout()}>
+            Sign out
+          </button>
+        }
+      />
+      {error && <p className="notice notice-error">{error}</p>}
+      {!user && !error && (
+        <section className="card">
+          <p>Loading account…</p>
+        </section>
+      )}
+      {user && (
+        <div className="profile-grid">
+          <section className="card profile-summary">
+            <div className="profile-identity">
+              <div className="profile-avatar">{initials(user.username)}</div>
+              <div>
+                <h2>{user.username}</h2>
+                <p>{user.email}</p>
+              </div>
+            </div>
+            <dl className="profile-list">
+              <dt>Account status</dt>
+              <dd>
+                <StatusBadge value="Active" />
+              </dd>
+              <dt>Organisation</dt>
+              <dd>{user.organisation_id ?? "Not assigned"}</dd>
               <dt>Roles</dt>
-              <dd>{user.roles.join(", ") || "None"}</dd>
-              <dt>Permissions</dt>
-              <dd>{user.permissions.join(", ") || "None"}</dd>
+              <dd>{user.roles.map((role) => role.replaceAll("_", " ")).join(", ") || "None"}</dd>
             </dl>
-            <button type="button" onClick={logout}>
-              Sign out
-            </button>
-            {user.permissions.includes("users.manage") && (
-              <Link to="/organisations">Organisation administration</Link>
-            )}
-            {user.permissions.includes("audit.read") && <Link to="/audit">Audit viewer</Link>}
-            {user.permissions.includes("gis.read") && <Link to="/map">GIS map</Link>}
-            {user.permissions.includes("datasets.read") && (
-              <Link to="/datasets">Data catalogue</Link>
-            )}
-            {user.permissions.includes("datasets.approve") && (
-              <Link to="/approvals">Dataset approvals</Link>
-            )}
-          </>
-        )}
-        <Link to="/">System status</Link>
-      </section>
+          </section>
+          <section className="card">
+            <div className="card-header">
+              <div>
+                <h2>Effective permissions</h2>
+                <p className="card-subtitle">
+                  These server-issued permissions determine what CRAM actions are available.
+                </p>
+              </div>
+              <span className="status-badge">{user.permissions.length} permissions</span>
+            </div>
+            <div className="permission-grid">
+              {user.permissions.map((permission) => (
+                <span className="permission-pill" key={permission}>
+                  {permission}
+                </span>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
