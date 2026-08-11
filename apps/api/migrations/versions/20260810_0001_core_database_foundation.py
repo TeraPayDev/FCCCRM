@@ -778,4 +778,7 @@ def downgrade() -> None:
         schema=SCHEMA,
     )
     op.drop_table("organisations", schema=SCHEMA)
+
+    op.execute(sa.text("ALTER EXTENSION pgcrypto SET SCHEMA public"))
+    op.execute(sa.text("ALTER EXTENSION postgis SET SCHEMA public"))
     op.execute(sa.text(f"DROP SCHEMA IF EXISTS {SCHEMA}"))
