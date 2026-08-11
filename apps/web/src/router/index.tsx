@@ -13,9 +13,11 @@ import { ProfilePage } from "../pages/ProfilePage";
 import { SystemStatusPage } from "../pages/SystemStatusPage";
 import { DashboardsPage } from "../pages/DashboardsPage";
 import { RoadmapModulePage } from "../pages/RoadmapModulePage";
+import { CitizenReportPage } from "../pages/CitizenReportPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/report-hazard", element: <CitizenReportPage /> },
   {
     element: <AppLayout />,
     children: [
