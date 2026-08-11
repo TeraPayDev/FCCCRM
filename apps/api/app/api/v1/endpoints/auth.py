@@ -15,6 +15,7 @@ from app.schemas.auth import (
 )
 from app.security.dependencies import current_user, require_permission
 from app.security.tokens import TokenError
+from app.services.audit import record_audit_event
 from app.services.auth import (
     AccountDisabledError,
     AccountLockedError,
@@ -58,6 +59,14 @@ def login(payload: LoginRequest) -> TokenPair:
         )
 
         access_token, refresh_token, expires_in = issue_token_pair(user)
+        record_audit_event(
+            session,
+            action="auth.login.success",
+            resource_type="user",
+            actor=user,
+            resource_id=user.id,
+        )
+        session.commit()
 
         return TokenPair(
             access_token=access_token,
@@ -78,6 +87,13 @@ def login(payload: LoginRequest) -> TokenPair:
         ) from exc
 
     except AuthenticationError as exc:
+        record_audit_event(
+            session,
+            action="auth.login.failure",
+            resource_type="authentication",
+            details={"username": payload.username},
+        )
+        session.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials.",
@@ -98,6 +114,14 @@ def refresh(payload: RefreshRequest) -> TokenPair:
         )
 
         access_token, refresh_token, expires_in = issue_token_pair(user)
+        record_audit_event(
+            session,
+            action="auth.login.success",
+            resource_type="user",
+            actor=user,
+            resource_id=user.id,
+        )
+        session.commit()
 
         return TokenPair(
             access_token=access_token,
@@ -133,6 +157,14 @@ def logout(user: CurrentUser) -> Response:
                 session,
                 managed_user,
             )
+            record_audit_event(
+                session,
+                action="auth.logout",
+                resource_type="user",
+                actor=managed_user,
+                resource_id=managed_user.id,
+            )
+            session.commit()
 
     finally:
         session.close()

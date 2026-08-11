@@ -55,6 +55,8 @@ export function ProfilePage() {
             {user.permissions.includes("users.manage") && (
               <Link to="/organisations">Organisation administration</Link>
             )}
+            {user.permissions.includes("audit.read") && <Link to="/audit">Audit viewer</Link>}
+            {user.permissions.includes("gis.read") && <Link to="/map">GIS map</Link>}
           </>
         )}
         <Link to="/">System status</Link>

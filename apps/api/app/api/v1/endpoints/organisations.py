@@ -15,6 +15,7 @@ from app.schemas.organisations import (
     UserOrganisationUpdate,
 )
 from app.security.dependencies import require_permission
+from app.services.audit import record_audit_event
 from app.services.organisations import (
     InactiveOrganisationError,
     OrganisationConflictError,
@@ -35,7 +36,10 @@ OrganisationManager = Annotated[User, Depends(require_permission("users.manage")
 
 
 def _organisation_response(organisation: Organisation) -> OrganisationResponse:
-    return OrganisationResponse.model_validate(organisation, from_attributes=True)
+    return OrganisationResponse.model_validate(
+        organisation,
+        from_attributes=True,
+    )
 
 
 def _user_response(user: User) -> UserOrganisationResponse:
@@ -53,113 +57,281 @@ def _user_response(user: User) -> UserOrganisationResponse:
 @router.get("", response_model=list[OrganisationResponse])
 def organisations_list(_: OrganisationReader) -> list[OrganisationResponse]:
     session = get_db_session()
+
     try:
         return [_organisation_response(item) for item in list_organisations(session)]
     finally:
         session.close()
 
 
-@router.post("", response_model=OrganisationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=OrganisationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def organisations_create(
     payload: OrganisationCreate,
-    _: OrganisationManager,
+    actor: OrganisationManager,
 ) -> OrganisationResponse:
     session = get_db_session()
+
     try:
         try:
-            organisation = create_organisation(session, code=payload.code, name=payload.name)
+            organisation = create_organisation(
+                session,
+                code=payload.code,
+                name=payload.name,
+            )
         except OrganisationConflictError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+
+        record_audit_event(
+            session,
+            action="organisation.create",
+            resource_type="organisation",
+            actor=actor,
+            resource_id=organisation.id,
+            organisation_id=organisation.id,
+            details={
+                "after": {
+                    "code": organisation.code,
+                    "name": organisation.name,
+                    "is_active": organisation.is_active,
+                }
+            },
+        )
+
+        session.commit()
+
         return _organisation_response(organisation)
     finally:
         session.close()
 
 
-@router.get("/users", response_model=list[UserOrganisationResponse])
-def organisation_users(_: OrganisationReader) -> list[UserOrganisationResponse]:
+@router.get(
+    "/users",
+    response_model=list[UserOrganisationResponse],
+)
+def organisation_users(
+    _: OrganisationReader,
+) -> list[UserOrganisationResponse]:
     session = get_db_session()
+
     try:
         return [_user_response(user) for user in list_users_with_organisations(session)]
     finally:
         session.close()
 
 
-@router.patch("/users/{user_id}", response_model=UserOrganisationResponse)
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserOrganisationResponse,
+)
 def organisation_user_update(
     user_id: uuid.UUID,
     payload: UserOrganisationUpdate,
-    _: OrganisationManager,
+    actor: OrganisationManager,
 ) -> UserOrganisationResponse:
     session = get_db_session()
+
     try:
         try:
+            before = session.get(User, user_id)
+            before_organisation_id = before.organisation_id if before else None
+
             user = assign_user_organisation(
                 session,
                 user_id=user_id,
                 organisation_id=payload.organisation_id,
             )
+
+            record_audit_event(
+                session,
+                action="user.organisation.change",
+                resource_type="user",
+                actor=actor,
+                resource_id=user.id,
+                organisation_id=user.organisation_id,
+                details={
+                    "before": {
+                        "organisation_id": (
+                            str(before_organisation_id) if before_organisation_id else None
+                        )
+                    },
+                    "after": {
+                        "organisation_id": (
+                            str(user.organisation_id) if user.organisation_id else None
+                        )
+                    },
+                },
+            )
+
+            session.commit()
+
         except OrganisationNotFoundError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+
         except InactiveOrganisationError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+
         return _user_response(user)
+
     finally:
         session.close()
 
 
-@router.get("/{organisation_id}", response_model=OrganisationResponse)
+@router.get(
+    "/{organisation_id}",
+    response_model=OrganisationResponse,
+)
 def organisation_detail(
     organisation_id: uuid.UUID,
     _: OrganisationReader,
 ) -> OrganisationResponse:
     session = get_db_session()
+
     try:
         try:
-            organisation = get_organisation(session, organisation_id)
+            organisation = get_organisation(
+                session,
+                organisation_id,
+            )
         except OrganisationNotFoundError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+
         return _organisation_response(organisation)
+
     finally:
         session.close()
 
 
-@router.patch("/{organisation_id}", response_model=OrganisationResponse)
+@router.patch(
+    "/{organisation_id}",
+    response_model=OrganisationResponse,
+)
 def organisation_update(
     organisation_id: uuid.UUID,
     payload: OrganisationUpdate,
-    _: OrganisationManager,
+    actor: OrganisationManager,
 ) -> OrganisationResponse:
     session = get_db_session()
+
     try:
         try:
-            organisation = get_organisation(session, organisation_id)
+            organisation = get_organisation(
+                session,
+                organisation_id,
+            )
         except OrganisationNotFoundError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+
+        before = {
+            "name": organisation.name,
+            "is_active": organisation.is_active,
+        }
+
         updated = update_organisation(
             session,
             organisation,
             name=payload.name,
             is_active=payload.is_active,
         )
+
+        record_audit_event(
+            session,
+            action="organisation.update",
+            resource_type="organisation",
+            actor=actor,
+            resource_id=updated.id,
+            organisation_id=updated.id,
+            details={
+                "before": before,
+                "after": {
+                    "name": updated.name,
+                    "is_active": updated.is_active,
+                },
+            },
+        )
+
+        session.commit()
+
         return _organisation_response(updated)
+
     finally:
         session.close()
 
 
-@router.delete("/{organisation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{organisation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def organisation_delete(
     organisation_id: uuid.UUID,
-    _: OrganisationManager,
+    actor: OrganisationManager,
 ) -> Response:
     session = get_db_session()
+
     try:
         try:
-            organisation = get_organisation(session, organisation_id)
-            delete_organisation(session, organisation)
+            organisation = get_organisation(
+                session,
+                organisation_id,
+            )
+
+            details: dict[str, object] = {
+                "before": {
+                    "code": organisation.code,
+                    "name": organisation.name,
+                    "is_active": organisation.is_active,
+                }
+            }
+
+            delete_organisation(
+                session,
+                organisation,
+            )
+
+            record_audit_event(
+                session,
+                action="organisation.delete",
+                resource_type="organisation",
+                actor=actor,
+                resource_id=organisation_id,
+                details=details,
+            )
+
+            session.commit()
+
         except OrganisationNotFoundError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+
         except OrganisationConflictError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
     finally:
         session.close()

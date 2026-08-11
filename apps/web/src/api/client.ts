@@ -173,3 +173,60 @@ export const api = {
       body: JSON.stringify({ organisation_id: organisationId }),
     }),
 };
+
+const auditEventSchema = z.object({
+  id: z.string(),
+  actor_user_id: z.string().nullable(),
+  organisation_id: z.string().nullable(),
+  action: z.string(),
+  resource_type: z.string(),
+  resource_id: z.string().nullable(),
+  details: z.record(z.string(), z.unknown()),
+  occurred_at: z.string(),
+});
+
+const spatialLayerSchema = z.object({
+  id: z.string(),
+  dataset_version_id: z.string().nullable(),
+  name: z.string(),
+  workspace: z.string().nullable(),
+  store_name: z.string().nullable(),
+  layer_name: z.string().nullable(),
+  geometry_type: z.string().nullable(),
+  srid: z.number().nullable(),
+  description: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const geographicAreaSchema = z.object({
+  id: z.string(),
+  parent_id: z.string().nullable(),
+  code: z.string(),
+  name: z.string(),
+  area_type: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  geometry: z.record(z.string(), z.unknown()).nullable(),
+  centroid: z.record(z.string(), z.unknown()).nullable(),
+});
+
+export type AuditEvent = z.infer<typeof auditEventSchema>;
+export type SpatialLayer = z.infer<typeof spatialLayerSchema>;
+export type GeographicArea = z.infer<typeof geographicAreaSchema>;
+
+export const milestone78Api = {
+  auditEvents: (accessToken: string, query = "") =>
+    requestJson(`/api/v1/audit${query ? `?${query}` : ""}`, z.array(auditEventSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  spatialLayers: (accessToken: string) =>
+    requestJson("/api/v1/gis/layers", z.array(spatialLayerSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  geographicAreas: (accessToken: string, bbox?: string) =>
+    requestJson(
+      `/api/v1/gis/areas${bbox ? `?bbox=${encodeURIComponent(bbox)}` : ""}`,
+      z.array(geographicAreaSchema),
+      { headers: authHeaders(accessToken) },
+    ),
+};

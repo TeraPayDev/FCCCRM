@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.audit import router as audit_router
 from app.api.v1.endpoints.auth import router as auth_router
+from app.api.v1.endpoints.gis import router as gis_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.organisations import router as organisations_router
 from app.api.v1.endpoints.version import router as version_router
@@ -9,4 +11,6 @@ api_router = APIRouter()
 api_router.include_router(health_router)
 api_router.include_router(version_router)
 api_router.include_router(auth_router)
+api_router.include_router(audit_router)
+api_router.include_router(gis_router)
 api_router.include_router(organisations_router)
