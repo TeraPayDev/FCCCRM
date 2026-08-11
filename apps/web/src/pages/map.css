@@ -1,47 +1,51 @@
 .map-page {
-  min-height: calc(100svh - 66px);
+  height: calc(100vh - 72px);
+  min-height: 620px;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 285px 1fr;
   color: var(--text);
   background: #fff;
 }
 .map-page aside {
-  padding: 24px 18px;
+  padding: 20px;
   border-right: 1px solid var(--border);
   overflow-y: auto;
-  background: #fbfcfb;
+  background: linear-gradient(180deg, #fbfefe, #f6fafb);
 }
 .map-page aside h1 {
-  margin: 0 0 5px;
+  margin: 0 0 8px;
   font-size: 1.45rem;
 }
 .map-page aside > p {
-  color: var(--text-muted);
-  font-size: 0.78rem;
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 .map-page aside label {
   display: block;
-  margin: 10px 0;
+  margin: 12px 0;
+  font-size: 0.74rem;
 }
-.map-page aside a {
+.map-page aside input,
+.map-page aside select {
+  width: 100%;
+  margin-top: 5px;
   font-size: 0.75rem;
-  font-weight: 700;
 }
 .map-note {
-  margin-top: 22px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--warning-soft);
-  color: #6f5a22 !important;
+  margin-top: 24px;
   font-size: 0.7rem !important;
+  color: #6e8491 !important;
+  padding: 11px;
+  background: #eef8f4;
+  border: 1px solid #d9ede5;
+  border-radius: 8px;
 }
 .map-error {
-  color: var(--danger) !important;
+  color: var(--danger);
 }
 .map-stage {
   position: relative;
   min-width: 0;
-  min-height: 560px;
 }
 .map-canvas {
   position: absolute;
@@ -53,25 +57,23 @@
   bottom: 14px;
   z-index: 2;
   background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
   padding: 6px 9px;
-  border-radius: 6px;
-  color: var(--text-strong);
-  font: 11px var(--mono);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font:
+    11px ui-monospace,
+    monospace;
+  box-shadow: var(--shadow-sm);
 }
-@media (max-width: 860px) {
+@media (max-width: 760px) {
   .map-page {
-    min-height: 700px;
+    height: auto;
+    min-height: 800px;
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 600px;
   }
   .map-page aside {
     border-right: 0;
     border-bottom: 1px solid var(--border);
-    padding: 18px;
-  }
-  .map-stage {
-    min-height: 520px;
   }
 }

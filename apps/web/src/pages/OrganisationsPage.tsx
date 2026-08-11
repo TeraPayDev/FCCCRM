@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api, type Organisation, type OrganisationUser } from "../api/client";
 import { clearTokens, loadTokens } from "../auth/session";
-import { PageHeader, StatusBadge } from "../components/Page";
 import "./organisations.css";
 
 export function OrganisationsPage() {
@@ -254,11 +253,20 @@ export function OrganisationsPage() {
 
   return (
     <main className="organisation-page">
-      <PageHeader
-        eyebrow="Governance"
-        title="Organisations"
-        description="Manage FCC and partner institutions and link users to their institutional owner."
-      />
+      <header className="organisation-header">
+        <div>
+          <p className="eyebrow">CRAM Governance</p>
+
+          <h1>Organisations</h1>
+
+          <p>Manage FCC and partner institutions and link users to their institutional owner.</p>
+        </div>
+
+        <nav>
+          <Link to="/profile">Identity</Link>
+          <Link to="/">System status</Link>
+        </nav>
+      </header>
 
       {message && <p className="organisation-message">{message}</p>}
 
@@ -303,9 +311,7 @@ export function OrganisationsPage() {
 
                   <td>{organisation.name}</td>
 
-                  <td>
-                    <StatusBadge value={organisation.is_active ? "Active" : "Inactive"} />
-                  </td>
+                  <td>{organisation.is_active ? "Active" : "Inactive"}</td>
 
                   <td className="organisation-actions">
                     <button

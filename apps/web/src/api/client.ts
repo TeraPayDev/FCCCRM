@@ -479,3 +479,19 @@ export const dataPlatformApi = {
       headers: authHeaders(accessToken),
     }),
 };
+
+const unknownArraySchema = z.array(z.record(z.string(), z.unknown()));
+const unknownObjectSchema = z.record(z.string(), z.unknown());
+
+export const roadmapApi = {
+  list: (accessToken: string, path: string) =>
+    requestJson(path, unknownArraySchema, { headers: authHeaders(accessToken) }),
+  object: (accessToken: string, path: string) =>
+    requestJson(path, unknownObjectSchema, { headers: authHeaders(accessToken) }),
+  post: (accessToken: string, path: string, payload?: Record<string, unknown>) =>
+    requestJson(path, unknownObjectSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: payload ? JSON.stringify(payload) : undefined,
+    }),
+};

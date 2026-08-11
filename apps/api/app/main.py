@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.core.security_headers import BasicRateLimitMiddleware, SecurityHeadersMiddleware
 
 settings = get_settings()
 
@@ -11,6 +12,9 @@ app = FastAPI(
     description=settings.app_description,
     version=settings.app_version,
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BasicRateLimitMiddleware, requests_per_minute=300)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,24 +1,56 @@
 .organisation-page {
-  display: grid;
-  gap: 16px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 26px 28px 42px;
 }
-.organisation-page .page-header {
-  margin-bottom: 0;
+.organisation-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  align-items: flex-end;
+  margin-bottom: 22px;
 }
-.organisation-message {
+.organisation-header h1 {
+  margin: 0 0 7px;
+}
+.organisation-header p {
   margin: 0;
-  padding: 11px 13px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  max-width: 720px;
+}
+.organisation-header nav {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+.organisation-header nav a {
+  padding: 7px 10px;
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8faf9;
-  font-size: 0.8rem;
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+.organisation-message {
+  padding: 10px 12px;
+  border: 1px solid #d8eaf1;
+  border-radius: 8px;
+  background: #f1f9fc;
+  font-size: 0.76rem;
 }
 .organisation-panel {
-  margin: 0;
+  margin-top: 16px;
   padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  background: #fff;
 }
 .organisation-panel h2 {
-  margin: 0 0 6px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #edf3f4;
 }
 .organisation-form {
   display: grid;
@@ -30,24 +62,51 @@
   display: grid;
   gap: 6px;
 }
+.organisation-form input,
+.organisation-table-wrap select {
+  font-size: 0.78rem;
+}
+.organisation-form button,
+.organisation-actions button {
+  font-size: 0.7rem;
+  padding: 8px 10px;
+}
 .organisation-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 9px;
 }
 .organisation-table-wrap table {
-  min-width: 720px;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+.organisation-table-wrap th,
+.organisation-table-wrap td {
+  padding: 10px;
+  border-bottom: 1px solid #e7eff1;
+  text-align: left;
+  vertical-align: middle;
+}
+.organisation-table-wrap th {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #758b97;
+  background: #f8fbfc;
 }
 .organisation-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
 }
 @media (max-width: 760px) {
+  .organisation-page {
+    padding: 20px 14px 32px;
+  }
+  .organisation-header {
+    align-items: start;
+    flex-direction: column;
+  }
   .organisation-form {
     grid-template-columns: 1fr;
-  }
-  .organisation-panel {
-    padding: 15px;
   }
 }
