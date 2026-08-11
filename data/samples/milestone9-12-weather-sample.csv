@@ -1,0 +1,4 @@
+observed_at,station_code,temperature_c,humidity_pct,latitude,longitude
+2026-08-10T08:00:00Z,SYNTH-001,27.4,82,-8.481,-13.231
+2026-08-10T09:00:00Z,SYNTH-001,28.1,79,-8.481,-13.231
+2026-08-10T10:00:00Z,SYNTH-001,29.0,76,-8.481,-13.231

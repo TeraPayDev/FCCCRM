@@ -57,6 +57,12 @@ export function ProfilePage() {
             )}
             {user.permissions.includes("audit.read") && <Link to="/audit">Audit viewer</Link>}
             {user.permissions.includes("gis.read") && <Link to="/map">GIS map</Link>}
+            {user.permissions.includes("datasets.read") && (
+              <Link to="/datasets">Data catalogue</Link>
+            )}
+            {user.permissions.includes("datasets.approve") && (
+              <Link to="/approvals">Dataset approvals</Link>
+            )}
           </>
         )}
         <Link to="/">System status</Link>

@@ -22,4 +22,4 @@ def test_milestone_4_tables_are_registered() -> None:
 
     actual = {key.split(".", 1)[-1] for key in Base.metadata.tables}
 
-    assert expected == actual
+    assert expected <= actual

@@ -1,0 +1,118 @@
+.datasets-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: #17212b;
+}
+.datasets-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+.datasets-header h1 {
+  margin: 0 0 0.35rem;
+}
+.datasets-header nav {
+  display: flex;
+  gap: 1rem;
+}
+.datasets-card {
+  background: #fff;
+  border: 1px solid #dfe5ea;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+.datasets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.dataset-form,
+.datasets-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: end;
+}
+.dataset-form label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 180px;
+}
+.dataset-form input,
+.dataset-form select,
+.datasets-search input {
+  padding: 0.65rem;
+  border: 1px solid #b8c2cc;
+  border-radius: 6px;
+}
+.datasets-card button {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #8b98a5;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.datasets-card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.datasets-card th,
+.datasets-card td {
+  padding: 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e9ed;
+  vertical-align: top;
+}
+.dataset-versions {
+  display: grid;
+  gap: 1rem;
+}
+.dataset-version {
+  border: 1px solid #dfe5ea;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.dataset-version header {
+  display: flex;
+  justify-content: space-between;
+}
+.dataset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.validation-result {
+  margin-top: 0.8rem;
+  background: #f5f7f9;
+  padding: 0.8rem;
+  border-radius: 6px;
+}
+.validation-error {
+  color: #8b1e1e;
+}
+.validation-warning {
+  color: #795400;
+}
+.datasets-message {
+  background: #eef6ff;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+}
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+}
+@media (max-width: 700px) {
+  .datasets-page {
+    padding: 1rem;
+  }
+  .datasets-header {
+    flex-direction: column;
+  }
+}
