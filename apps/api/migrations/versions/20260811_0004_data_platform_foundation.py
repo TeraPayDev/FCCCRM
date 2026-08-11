@@ -1,0 +1,318 @@
+"""Implement data catalogue, ingestion, validation, approval and publishing.
+
+Revision ID: 20260811_0004
+Revises: 20260810_0003
+Create Date: 2026-08-11
+"""
+
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import postgresql
+
+revision: str = "20260811_0004"
+down_revision: str | None = "20260810_0003"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+SCHEMA = "cram"
+
+
+def upgrade() -> None:
+    op.add_column(
+        "datasets", sa.Column("category", sa.String(length=120), nullable=True), schema=SCHEMA
+    )
+    op.add_column(
+        "datasets",
+        sa.Column("sensitivity", sa.String(length=40), server_default="INTERNAL", nullable=False),
+        schema=SCHEMA,
+    )
+    op.add_column(
+        "datasets",
+        sa.Column("expected_format", sa.String(length=40), server_default="CSV", nullable=False),
+        schema=SCHEMA,
+    )
+    op.add_column(
+        "datasets",
+        sa.Column("update_frequency", sa.String(length=120), nullable=True),
+        schema=SCHEMA,
+    )
+    op.add_column(
+        "datasets",
+        sa.Column("status", sa.String(length=40), server_default="DRAFT", nullable=False),
+        schema=SCHEMA,
+    )
+    op.create_check_constraint(
+        "dataset_status_valid",
+        "datasets",
+        "status IN ('DRAFT','ACTIVE','ARCHIVED')",
+        schema=SCHEMA,
+    )
+    op.create_index("ix_datasets_category", "datasets", ["category"], schema=SCHEMA)
+    op.create_index("ix_datasets_status", "datasets", ["status"], schema=SCHEMA)
+
+    op.add_column(
+        "dataset_sources",
+        sa.Column("connection_secret_ref", sa.String(length=300), nullable=True),
+        schema=SCHEMA,
+    )
+    op.add_column(
+        "dataset_sources",
+        sa.Column("update_method", sa.String(length=120), nullable=True),
+        schema=SCHEMA,
+    )
+
+    op.add_column(
+        "dataset_versions",
+        sa.Column("status", sa.String(length=40), server_default="DRAFT", nullable=False),
+        schema=SCHEMA,
+    )
+    op.add_column(
+        "dataset_versions", sa.Column("row_count", sa.Integer(), nullable=True), schema=SCHEMA
+    )
+    op.add_column(
+        "dataset_versions",
+        sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
+        schema=SCHEMA,
+    )
+    op.create_check_constraint(
+        "dataset_version_status_valid",
+        "dataset_versions",
+        "status IN ('DRAFT','UPLOADED','VALIDATING','VALIDATION_FAILED','VALIDATED',"
+        "'PENDING_APPROVAL','APPROVED','PUBLISHED','REJECTED','SUPERSEDED','ARCHIVED')",
+        schema=SCHEMA,
+    )
+    op.create_index("ix_dataset_versions_status", "dataset_versions", ["status"], schema=SCHEMA)
+
+    op.add_column(
+        "dataset_fields", sa.Column("description", sa.Text(), nullable=True), schema=SCHEMA
+    )
+    op.add_column(
+        "dataset_fields",
+        sa.Column(
+            "validation_rules",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
+        schema=SCHEMA,
+    )
+
+    op.create_table(
+        "data_validation_runs",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
+        sa.Column("dataset_version_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("status", sa.String(length=40), server_default="PENDING", nullable=False),
+        sa.Column("execution_mode", sa.String(length=20), server_default="SYNC", nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("total_rows", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("error_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("warning_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.CheckConstraint(
+            "status IN ('PENDING','RUNNING','PASSED','FAILED')",
+            name="validation_run_status_valid",
+        ),
+        sa.CheckConstraint(
+            "execution_mode IN ('SYNC','BACKGROUND')",
+            name="validation_execution_mode_valid",
+        ),
+        sa.ForeignKeyConstraint(
+            ["dataset_version_id"],
+            [f"{SCHEMA}.dataset_versions.id"],
+            name="fk_data_validation_runs_dataset_version_id_dataset_versions",
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name="pk_data_validation_runs"),
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_data_validation_runs_dataset_version_id",
+        "data_validation_runs",
+        ["dataset_version_id"],
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_data_validation_runs_status", "data_validation_runs", ["status"], schema=SCHEMA
+    )
+
+    op.create_table(
+        "validation_errors",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
+        sa.Column("validation_run_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("row_number", sa.Integer(), nullable=True),
+        sa.Column("field_name", sa.String(length=200), nullable=True),
+        sa.Column("rule_code", sa.String(length=120), nullable=False),
+        sa.Column("severity", sa.String(length=20), nullable=False),
+        sa.Column("message", sa.Text(), nullable=False),
+        sa.Column("value_excerpt", sa.String(length=500), nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.CheckConstraint(
+            "severity IN ('ERROR','WARNING')",
+            name="validation_error_severity_valid",
+        ),
+        sa.ForeignKeyConstraint(
+            ["validation_run_id"],
+            [f"{SCHEMA}.data_validation_runs.id"],
+            name="fk_validation_errors_validation_run_id_data_validation_runs",
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name="pk_validation_errors"),
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_validation_errors_validation_run_id",
+        "validation_errors",
+        ["validation_run_id"],
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_validation_errors_severity", "validation_errors", ["severity"], schema=SCHEMA
+    )
+
+    op.create_table(
+        "approvals",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
+        sa.Column("dataset_version_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("submitted_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("reviewed_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("status", sa.String(length=30), server_default="PENDING", nullable=False),
+        sa.Column("comments", sa.Text(), nullable=True),
+        sa.Column(
+            "submitted_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.CheckConstraint(
+            "status IN ('PENDING','APPROVED','REJECTED')",
+            name="approval_status_valid",
+        ),
+        sa.ForeignKeyConstraint(
+            ["dataset_version_id"],
+            [f"{SCHEMA}.dataset_versions.id"],
+            name="fk_approvals_dataset_version_id_dataset_versions",
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["submitted_by_user_id"],
+            [f"{SCHEMA}.users.id"],
+            name="fk_approvals_submitted_by_user_id_users",
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["reviewed_by_user_id"],
+            [f"{SCHEMA}.users.id"],
+            name="fk_approvals_reviewed_by_user_id_users",
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name="pk_approvals"),
+        sa.UniqueConstraint("dataset_version_id", name="uq_approvals_dataset_version_id"),
+        schema=SCHEMA,
+    )
+    op.create_index("ix_approvals_status", "approvals", ["status"], schema=SCHEMA)
+
+    op.create_table(
+        "dataset_version_status_history",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
+        sa.Column("dataset_version_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("from_status", sa.String(length=40), nullable=True),
+        sa.Column("to_status", sa.String(length=40), nullable=False),
+        sa.Column("changed_by_user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("comment", sa.Text(), nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.ForeignKeyConstraint(
+            ["dataset_version_id"],
+            [f"{SCHEMA}.dataset_versions.id"],
+            name="fk_dv_status_history_version",
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["changed_by_user_id"],
+            [f"{SCHEMA}.users.id"],
+            name="fk_dataset_version_status_history_changed_by_user_id_users",
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name="pk_dataset_version_status_history"),
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_dataset_version_status_history_dataset_version_id",
+        "dataset_version_status_history",
+        ["dataset_version_id"],
+        schema=SCHEMA,
+    )
+    op.create_index(
+        "ix_dataset_version_status_history_created_at",
+        "dataset_version_status_history",
+        ["created_at"],
+        schema=SCHEMA,
+    )
+
+
+def downgrade() -> None:
+    op.drop_table("dataset_version_status_history", schema=SCHEMA)
+    op.drop_table("approvals", schema=SCHEMA)
+    op.drop_table("validation_errors", schema=SCHEMA)
+    op.drop_table("data_validation_runs", schema=SCHEMA)
+
+    op.drop_column("dataset_fields", "validation_rules", schema=SCHEMA)
+    op.drop_column("dataset_fields", "description", schema=SCHEMA)
+
+    op.drop_index("ix_dataset_versions_status", table_name="dataset_versions", schema=SCHEMA)
+    op.drop_constraint(
+        "ck_dataset_versions_dataset_version_status_valid",
+        "dataset_versions",
+        schema=SCHEMA,
+        type_="check",
+    )
+    op.drop_column("dataset_versions", "published_at", schema=SCHEMA)
+    op.drop_column("dataset_versions", "row_count", schema=SCHEMA)
+    op.drop_column("dataset_versions", "status", schema=SCHEMA)
+
+    op.drop_column("dataset_sources", "update_method", schema=SCHEMA)
+    op.drop_column("dataset_sources", "connection_secret_ref", schema=SCHEMA)
+
+    op.drop_index("ix_datasets_status", table_name="datasets", schema=SCHEMA)
+    op.drop_index("ix_datasets_category", table_name="datasets", schema=SCHEMA)
+    op.drop_constraint("ck_datasets_dataset_status_valid", "datasets", schema=SCHEMA, type_="check")
+    op.drop_column("datasets", "status", schema=SCHEMA)
+    op.drop_column("datasets", "update_frequency", schema=SCHEMA)
+    op.drop_column("datasets", "expected_format", schema=SCHEMA)
+    op.drop_column("datasets", "sensitivity", schema=SCHEMA)
+    op.drop_column("datasets", "category", schema=SCHEMA)

@@ -14,11 +14,11 @@ from app.db.base import Base, UUIDPrimaryKeyMixin
 class AuditLog(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "audit_logs"
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("cram.users.id", ondelete="SET NULL"), nullable=True
+        PG_UUID(as_uuid=True), ForeignKey("cram.users.id", ondelete="RESTRICT"), nullable=True
     )
     organisation_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("cram.organisations.id", ondelete="SET NULL"),
+        ForeignKey("cram.organisations.id", ondelete="RESTRICT"),
         nullable=True,
     )
     action: Mapped[str] = mapped_column(String(160), nullable=False)

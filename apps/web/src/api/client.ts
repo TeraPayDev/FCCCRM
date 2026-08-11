@@ -230,3 +230,252 @@ export const milestone78Api = {
       { headers: authHeaders(accessToken) },
     ),
 };
+
+const datasetSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  owner_organisation_id: z.string(),
+  category: z.string().nullable(),
+  sensitivity: z.string(),
+  expected_format: z.string(),
+  update_frequency: z.string().nullable(),
+  status: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const datasetPageSchema = z.object({
+  items: z.array(datasetSchema),
+  total: z.number(),
+  offset: z.number(),
+  limit: z.number(),
+});
+
+const datasetSourceSchema = z.object({
+  id: z.string(),
+  dataset_id: z.string(),
+  provider_organisation_id: z.string().nullable(),
+  name: z.string(),
+  source_type: z.string(),
+  source_reference: z.string().nullable(),
+  connection_secret_ref: z.string().nullable(),
+  update_method: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const datasetFieldSchema = z.object({
+  id: z.string(),
+  dataset_id: z.string(),
+  name: z.string(),
+  data_type: z.string(),
+  ordinal: z.number(),
+  is_required: z.boolean(),
+  description: z.string().nullable(),
+  validation_rules: z.record(z.string(), z.unknown()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const datasetVersionSchema = z.object({
+  id: z.string(),
+  dataset_id: z.string(),
+  source_id: z.string().nullable(),
+  version_number: z.number(),
+  status: z.string(),
+  checksum_sha256: z.string().nullable(),
+  row_count: z.number().nullable(),
+  published_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const datasetUploadSchema = z.object({
+  id: z.string(),
+  dataset_version_id: z.string(),
+  uploaded_by_user_id: z.string().nullable(),
+  object_key: z.string(),
+  original_filename: z.string(),
+  mime_type: z.string().nullable(),
+  size_bytes: z.number(),
+  checksum_sha256: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const validationErrorSchema = z.object({
+  id: z.string(),
+  validation_run_id: z.string(),
+  row_number: z.number().nullable(),
+  field_name: z.string().nullable(),
+  rule_code: z.string(),
+  severity: z.string(),
+  message: z.string(),
+  value_excerpt: z.string().nullable(),
+  created_at: z.string(),
+});
+
+const validationRunSchema = z.object({
+  id: z.string(),
+  dataset_version_id: z.string(),
+  status: z.string(),
+  execution_mode: z.string(),
+  started_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  total_rows: z.number(),
+  error_count: z.number(),
+  warning_count: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  errors: z.array(validationErrorSchema),
+});
+
+const approvalSchema = z.object({
+  id: z.string(),
+  dataset_version_id: z.string(),
+  submitted_by_user_id: z.string().nullable(),
+  reviewed_by_user_id: z.string().nullable(),
+  status: z.string(),
+  comments: z.string().nullable(),
+  submitted_at: z.string(),
+  reviewed_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type Dataset = z.infer<typeof datasetSchema>;
+export type DatasetPage = z.infer<typeof datasetPageSchema>;
+export type DatasetSource = z.infer<typeof datasetSourceSchema>;
+export type DatasetField = z.infer<typeof datasetFieldSchema>;
+export type DatasetVersion = z.infer<typeof datasetVersionSchema>;
+export type DatasetUpload = z.infer<typeof datasetUploadSchema>;
+export type ValidationRun = z.infer<typeof validationRunSchema>;
+export type Approval = z.infer<typeof approvalSchema>;
+
+export const dataPlatformApi = {
+  datasets: (accessToken: string, query = "") =>
+    requestJson(`/api/v1/datasets${query ? `?${query}` : ""}`, datasetPageSchema, {
+      headers: authHeaders(accessToken),
+    }),
+  dataset: (accessToken: string, datasetId: string) =>
+    requestJson(`/api/v1/datasets/${datasetId}`, datasetSchema, {
+      headers: authHeaders(accessToken),
+    }),
+  createDataset: (
+    accessToken: string,
+    payload: {
+      code: string;
+      name: string;
+      description?: string;
+      owner_organisation_id: string;
+      category?: string;
+      sensitivity: string;
+      expected_format: string;
+      update_frequency?: string;
+    },
+  ) =>
+    requestJson("/api/v1/datasets", datasetSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  sources: (accessToken: string, datasetId: string) =>
+    requestJson(`/api/v1/datasets/${datasetId}/sources`, z.array(datasetSourceSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  createSource: (
+    accessToken: string,
+    datasetId: string,
+    payload: {
+      provider_organisation_id?: string | null;
+      name: string;
+      source_type: string;
+      source_reference?: string;
+      connection_secret_ref?: string;
+      update_method?: string;
+    },
+  ) =>
+    requestJson(`/api/v1/datasets/${datasetId}/sources`, datasetSourceSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  fields: (accessToken: string, datasetId: string) =>
+    requestJson(`/api/v1/datasets/${datasetId}/fields`, z.array(datasetFieldSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  createField: (
+    accessToken: string,
+    datasetId: string,
+    payload: {
+      name: string;
+      data_type: string;
+      ordinal: number;
+      is_required: boolean;
+      validation_rules: Record<string, unknown>;
+    },
+  ) =>
+    requestJson(`/api/v1/datasets/${datasetId}/fields`, datasetFieldSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  versions: (accessToken: string, datasetId: string) =>
+    requestJson(`/api/v1/datasets/${datasetId}/versions`, z.array(datasetVersionSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  uploadCsv: async (accessToken: string, datasetId: string, file: File, sourceId?: string) => {
+    const params = new URLSearchParams({ filename: file.name });
+    if (sourceId) params.set("source_id", sourceId);
+    const response = await fetch(
+      `${env.VITE_API_URL}/api/v1/datasets/${datasetId}/uploads?${params.toString()}`,
+      {
+        method: "POST",
+        headers: { ...authHeaders(accessToken), "Content-Type": file.type || "text/csv" },
+        body: file,
+      },
+    );
+    if (!response.ok) throw new ApiError(await errorMessage(response), response.status);
+    return datasetUploadSchema.parse(await response.json());
+  },
+  validateVersion: (accessToken: string, versionId: string, background = false) =>
+    requestJson(
+      `/api/v1/datasets/versions/${versionId}/validate?background=${String(background)}`,
+      validationRunSchema,
+      { method: "POST", headers: authHeaders(accessToken) },
+    ),
+  validations: (accessToken: string, versionId: string) =>
+    requestJson(
+      `/api/v1/datasets/versions/${versionId}/validations`,
+      z.array(validationRunSchema),
+      { headers: authHeaders(accessToken) },
+    ),
+  submitVersion: (accessToken: string, versionId: string) =>
+    requestJson(`/api/v1/datasets/versions/${versionId}/submit`, approvalSchema, {
+      method: "POST",
+      headers: authHeaders(accessToken),
+    }),
+  approvals: (accessToken: string) =>
+    requestJson("/api/v1/datasets/approvals", z.array(approvalSchema), {
+      headers: authHeaders(accessToken),
+    }),
+  approve: (accessToken: string, approvalId: string, comments = "") =>
+    requestJson(`/api/v1/datasets/approvals/${approvalId}/approve`, approvalSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ comments }),
+    }),
+  reject: (accessToken: string, approvalId: string, comments = "") =>
+    requestJson(`/api/v1/datasets/approvals/${approvalId}/reject`, approvalSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ comments }),
+    }),
+  publish: (accessToken: string, versionId: string) =>
+    requestJson(`/api/v1/datasets/versions/${versionId}/publish`, datasetVersionSchema, {
+      method: "POST",
+      headers: authHeaders(accessToken),
+    }),
+};

@@ -1,5 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
+import { ApprovalQueuePage } from "../pages/ApprovalQueuePage";
 import { AuditPage } from "../pages/AuditPage";
+import { DatasetDetailPage } from "../pages/DatasetDetailPage";
+import { DatasetsPage } from "../pages/DatasetsPage";
 import { MapPage } from "../pages/MapPage";
 import { AboutPage } from "../pages/AboutPage";
 import { LoginPage } from "../pages/LoginPage";
@@ -16,5 +19,8 @@ export const router = createBrowserRouter([
   { path: "/organisations", element: <OrganisationsPage /> },
   { path: "/audit", element: <AuditPage /> },
   { path: "/map", element: <MapPage /> },
+  { path: "/datasets", element: <DatasetsPage /> },
+  { path: "/datasets/:datasetId", element: <DatasetDetailPage /> },
+  { path: "/approvals", element: <ApprovalQueuePage /> },
   { path: "*", element: <NotFoundPage /> },
 ]);
