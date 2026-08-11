@@ -4,6 +4,7 @@ import uuid
 
 from geoalchemy2 import Geometry
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,6 +26,9 @@ class GeographicArea(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     centroid: Mapped[object | None] = mapped_column(
         Geometry("POINT", srid=4326, spatial_index=False), nullable=True
+    )
+    area_metadata: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
     )
     __table_args__ = (
         Index("ix_geographic_areas_parent_id", "parent_id"),

@@ -1,0 +1,64 @@
+.audit-page {
+  min-height: 100vh;
+  padding: 2rem;
+  background: #f6f7f9;
+  color: #172033;
+}
+.audit-panel {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  padding: 1.5rem;
+  border: 1px solid #d8dde6;
+  border-radius: 12px;
+}
+.audit-panel header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+.audit-panel h1 {
+  margin: 0;
+}
+.audit-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+.audit-filters label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+.audit-filters input {
+  min-width: 230px;
+  padding: 0.65rem;
+}
+.audit-filters button {
+  padding: 0.7rem 1.2rem;
+}
+.audit-table-wrap {
+  overflow-x: auto;
+}
+.audit-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.audit-panel th,
+.audit-panel td {
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #e3e6eb;
+  padding: 0.7rem;
+}
+.audit-panel code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.audit-error {
+  color: #a32020;
+}

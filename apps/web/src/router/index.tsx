@@ -1,4 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
+import { AuditPage } from "../pages/AuditPage";
+import { MapPage } from "../pages/MapPage";
 import { AboutPage } from "../pages/AboutPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -12,5 +14,7 @@ export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/profile", element: <ProfilePage /> },
   { path: "/organisations", element: <OrganisationsPage /> },
+  { path: "/audit", element: <AuditPage /> },
+  { path: "/map", element: <MapPage /> },
   { path: "*", element: <NotFoundPage /> },
 ]);
