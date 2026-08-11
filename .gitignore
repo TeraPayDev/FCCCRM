@@ -35,3 +35,4 @@ data/tmp/
 *.pem
 *.key
 *.crt
+GithubToken.txt

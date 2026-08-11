@@ -1,22 +1,14 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  api,
-  dataPlatformApi,
-  type CurrentUser,
-  type Dataset,
-  type Organisation,
-} from "../api/client";
+import { api, dataPlatformApi, type Dataset, type Organisation } from "../api/client";
 import { loadTokens } from "../auth/session";
-import { EmptyState, PageHeader, StatusBadge } from "../components/Page";
 import "./datasets.css";
 
 export function DatasetsPage() {
   const navigate = useNavigate();
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
-  const [me, setMe] = useState<CurrentUser | null>(null);
   const [query, setQuery] = useState("");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -24,7 +16,6 @@ export function DatasetsPage() {
   const [category, setCategory] = useState("");
   const [frequency, setFrequency] = useState("");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const tokens = loadTokens();
@@ -36,15 +27,13 @@ export function DatasetsPage() {
     let cancelled = false;
     async function loadInitial() {
       try {
-        const [page, orgs, currentUser] = await Promise.all([
+        const [page, orgs] = await Promise.all([
           dataPlatformApi.datasets(accessToken),
           api.organisations(accessToken),
-          api.me(accessToken),
         ]);
         if (!cancelled) {
           setDatasets(page.items);
           setOrganisations(orgs);
-          setMe(currentUser);
           setOwner(orgs[0]?.id ?? "");
         }
       } catch (error) {
@@ -71,8 +60,6 @@ export function DatasetsPage() {
     event.preventDefault();
     const tokens = loadTokens();
     if (!tokens || !owner) return;
-    setBusy(true);
-    setMessage("");
     try {
       await dataPlatformApi.createDataset(tokens.access_token, {
         code: code.trim(),
@@ -87,173 +74,101 @@ export function DatasetsPage() {
       setName("");
       setCategory("");
       setFrequency("");
-      setMessage("Dataset registered successfully.");
+      setMessage("Dataset registered.");
       await reload("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to register dataset.");
-    } finally {
-      setBusy(false);
     }
   }
 
-  const canManage = me?.permissions.includes("datasets.manage") ?? false;
-
   return (
     <main className="datasets-page">
-      <PageHeader
-        eyebrow="Data management"
-        title="Data catalogue"
-        description="Institutional datasets, sources, versions and governance metadata in one searchable catalogue."
-        actions={
-          me?.permissions.includes("datasets.approve") ? (
-            <Link className="button" to="/approvals">
-              Open approval queue
-            </Link>
-          ) : undefined
-        }
-      />
-      {message && (
-        <p
-          className={`notice ${message.toLowerCase().includes("unable") || message.toLowerCase().includes("failed") ? "notice-error" : "notice-success"}`}
-        >
-          {message}
-        </p>
-      )}
-
-      <section className="datasets-card catalogue-panel">
-        <div className="catalogue-toolbar">
-          <form
-            className="datasets-search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void reload();
-            }}
-          >
-            <input
-              aria-label="Search datasets"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by dataset code or name…"
-            />
-            <button type="submit">Search</button>
-            {query && (
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  void reload("");
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </form>
-          <span className="catalogue-count">{datasets.length} shown</span>
+      <header className="datasets-header">
+        <div>
+          <h1>CRAM Data Catalogue</h1>
+          <p>Institutional datasets, sources, versions and governance metadata.</p>
         </div>
-        {datasets.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Dataset</th>
-                  <th>Owner</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Format</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datasets.map((dataset) => (
-                  <tr key={dataset.id}>
-                    <td>
-                      <Link className="dataset-name-link" to={`/datasets/${dataset.id}`}>
-                        <strong>{dataset.name}</strong>
-                        <span>{dataset.code}</span>
-                      </Link>
-                    </td>
-                    <td>
-                      {organisations.find((item) => item.id === dataset.owner_organisation_id)
-                        ?.name ?? "Institutional owner"}
-                    </td>
-                    <td>{dataset.category ?? "—"}</td>
-                    <td>
-                      <StatusBadge value={dataset.status} />
-                    </td>
-                    <td>{dataset.expected_format}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            title="No datasets found"
-            description="Adjust the search or register the first institutional dataset if you have catalogue-management permission."
+        <nav>
+          <Link to="/profile">Profile</Link>
+          <Link to="/approvals">Approval queue</Link>
+        </nav>
+      </header>
+      <section className="datasets-card">
+        <form
+          className="datasets-search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void reload();
+          }}
+        >
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search code or name"
           />
-        )}
+          <button type="submit">Search</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Dataset</th>
+              <th>Owner</th>
+              <th>Status</th>
+              <th>Format</th>
+            </tr>
+          </thead>
+          <tbody>
+            {datasets.map((dataset) => (
+              <tr key={dataset.id}>
+                <td>{dataset.code}</td>
+                <td>
+                  <Link to={`/datasets/${dataset.id}`}>{dataset.name}</Link>
+                </td>
+                <td>
+                  {organisations.find((item) => item.id === dataset.owner_organisation_id)?.name ??
+                    dataset.owner_organisation_id}
+                </td>
+                <td>{dataset.status}</td>
+                <td>{dataset.expected_format}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
-
-      {canManage && (
-        <section className="datasets-card">
-          <div className="card-header">
-            <div>
-              <h2>Register a dataset</h2>
-              <p className="card-subtitle">
-                Create the logical data product before sources, fields and uploaded versions are
-                added.
-              </p>
-            </div>
-          </div>
-          <form
-            className="dataset-form dataset-register-grid"
-            onSubmit={(event) => void create(event)}
-          >
-            <label>
-              Dataset code
-              <input
-                required
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                placeholder="e.g. SL-MET-WEATHER"
-              />
-            </label>
-            <label>
-              Dataset name
-              <input required value={name} onChange={(event) => setName(event.target.value)} />
-            </label>
-            <label>
-              Institutional owner
-              <select required value={owner} onChange={(event) => setOwner(event.target.value)}>
-                {organisations.map((organisation) => (
-                  <option key={organisation.id} value={organisation.id}>
-                    {organisation.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Category
-              <input
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                placeholder="Weather, GIS, socioeconomic…"
-              />
-            </label>
-            <label>
-              Update frequency
-              <input
-                value={frequency}
-                onChange={(event) => setFrequency(event.target.value)}
-                placeholder="Daily, monthly, ad hoc…"
-              />
-            </label>
-            <button className="button-primary" type="submit" disabled={busy}>
-              {busy ? "Registering…" : "Register dataset"}
-            </button>
-          </form>
-        </section>
-      )}
+      <section className="datasets-card">
+        <h2>Register dataset</h2>
+        <form className="dataset-form" onSubmit={(event) => void create(event)}>
+          <label>
+            Code
+            <input required value={code} onChange={(event) => setCode(event.target.value)} />
+          </label>
+          <label>
+            Name
+            <input required value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label>
+            Owner
+            <select required value={owner} onChange={(event) => setOwner(event.target.value)}>
+              {organisations.map((organisation) => (
+                <option key={organisation.id} value={organisation.id}>
+                  {organisation.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Category
+            <input value={category} onChange={(event) => setCategory(event.target.value)} />
+          </label>
+          <label>
+            Update frequency
+            <input value={frequency} onChange={(event) => setFrequency(event.target.value)} />
+          </label>
+          <button type="submit">Register</button>
+        </form>
+        {message && <p>{message}</p>}
+      </section>
     </main>
   );
 }

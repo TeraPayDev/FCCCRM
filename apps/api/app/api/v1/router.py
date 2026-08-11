@@ -6,6 +6,7 @@ from app.api.v1.endpoints.datasets import router as datasets_router
 from app.api.v1.endpoints.gis import router as gis_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.organisations import router as organisations_router
+from app.api.v1.endpoints.roadmap import router as roadmap_router
 from app.api.v1.endpoints.version import router as version_router
 
 api_router = APIRouter()
@@ -16,3 +17,5 @@ api_router.include_router(audit_router)
 api_router.include_router(gis_router)
 api_router.include_router(datasets_router)
 api_router.include_router(organisations_router)
+
+api_router.include_router(roadmap_router)

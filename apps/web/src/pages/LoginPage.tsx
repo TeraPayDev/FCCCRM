@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { saveTokens } from "../auth/session";
+import { Icon } from "../components/Icon";
 import "./auth.css";
 
 export function LoginPage() {
@@ -11,7 +12,6 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -26,30 +26,54 @@ export function LoginPage() {
       setBusy(false);
     }
   }
-
   return (
-    <main className="login-layout">
+    <main className="login-page">
       <section className="login-brand-panel">
-        <div className="login-brand-mark">CR</div>
-        <p className="login-kicker">Freetown City Council</p>
-        <h1>Climate data, governance and spatial intelligence in one workspace.</h1>
-        <p>
-          CRAM connects institutional ownership, versioned data, validation, approval, GIS and audit
-          controls through a single governed platform.
-        </p>
-        <div className="login-foundation">
-          <span>Gate 2</span>
-          <strong>Data Platform Complete</strong>
+        <div className="login-brand">
+          <div className="brand-mark login-mark">
+            <span>CR</span>
+          </div>
+          <div>
+            <strong>CRAM</strong>
+            <span>Climate Risk Analytics Management Platform</span>
+          </div>
+        </div>
+        <div className="login-message">
+          <p className="eyebrow">Freetown City Council</p>
+          <h1>Evidence-driven climate resilience starts here.</h1>
+          <p>
+            Secure access to governed climate data, spatial intelligence, risk analytics and
+            municipal decision support.
+          </p>
+          <div className="login-features">
+            <span>
+              <Icon name="check" /> Governed climate data
+            </span>
+            <span>
+              <Icon name="check" /> Spatial risk intelligence
+            </span>
+            <span>
+              <Icon name="check" /> Traceable decisions
+            </span>
+          </div>
+        </div>
+        <div className="login-landscape" aria-hidden="true">
+          <i />
+          <i />
+          <i />
         </div>
       </section>
       <section className="login-form-panel">
         <div className="auth-card">
-          <p className="page-eyebrow">Secure workspace</p>
-          <h2>Sign in to CRAM</h2>
-          <p className="auth-intro">
-            Use your assigned CRAM account. Access is determined by your effective permissions and
-            organisation.
-          </p>
+          <div className="mobile-login-brand">
+            <div className="brand-mark">
+              <span>CR</span>
+            </div>
+            <strong>CRAM</strong>
+          </div>
+          <p className="eyebrow">Secure workspace</p>
+          <h2>Welcome back</h2>
+          <p className="auth-subtitle">Sign in with your authorized CRAM account.</p>
           <form onSubmit={submit}>
             <label>
               Username or email
@@ -57,6 +81,7 @@ export function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
+                placeholder="Enter username or email"
               />
             </label>
             <label>
@@ -66,16 +91,18 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                placeholder="Enter password"
               />
             </label>
-            {message && <p className="notice notice-error">{message}</p>}
-            <button className="button-primary" type="submit" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
+            {message && <p className="auth-error">{message}</p>}
+            <button type="submit" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in to CRAM"}
+              <Icon name="arrow" />
             </button>
           </form>
-          <Link className="auth-back" to="/">
-            ← Return to platform overview
-          </Link>
+          <div className="login-security">
+            <span className="system-dot" /> Protected by CRAM role-based access control
+          </div>
         </div>
       </section>
     </main>

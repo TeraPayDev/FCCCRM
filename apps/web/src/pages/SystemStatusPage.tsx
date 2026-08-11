@@ -1,151 +1,171 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import { loadTokens } from "../auth/session";
-import { PageHeader, StatusBadge } from "../components/Page";
+import { Icon } from "../components/Icon";
+import "./overview.css";
 
 export function SystemStatusPage() {
-  const tokens = loadTokens();
   const health = useQuery({ queryKey: ["system", "health"], queryFn: api.health, retry: 1 });
-  const me = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: () => api.me(tokens!.access_token),
-    enabled: Boolean(tokens),
-    retry: false,
-  });
-  const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
-
-  const apiStatus = health.isPending ? "Checking" : health.isError ? "Unavailable" : "Healthy";
-  const capabilities = [
-    {
-      title: "Data catalogue",
-      description: "Register institutional datasets, manage versions and review source metadata.",
-      to: "/datasets",
-      permission: "datasets.read",
-      tag: "Data",
-    },
-    {
-      title: "Approval queue",
-      description: "Review validated dataset versions through the governed publishing workflow.",
-      to: "/approvals",
-      permission: "datasets.approve",
-      tag: "Governance",
-    },
-    {
-      title: "GIS workspace",
-      description: "Inspect the CRAM spatial foundation and published GeoServer layers.",
-      to: "/map",
-      permission: "gis.read",
-      tag: "Spatial",
-    },
-    {
-      title: "Audit trail",
-      description: "Trace privileged, security and data-governance activity across the platform.",
-      to: "/audit",
-      permission: "audit.read",
-      tag: "Audit",
-    },
-    {
-      title: "Organisations",
-      description: "Manage institutional ownership and user-to-organisation assignments.",
-      to: "/organisations",
-      permission: "users.manage",
-      tag: "Admin",
-    },
-  ].filter((item) => can(item.permission));
+  const online = !health.isError;
+  const apiStatus = health.isPending
+    ? "Checking service"
+    : health.isError
+      ? "Service unavailable"
+      : `Healthy · v${health.data.version}`;
 
   return (
-    <main className="system-page">
-      <PageHeader
-        eyebrow="Platform overview"
-        title="CRAM operational workspace"
-        description="A governed climate-risk data platform for Freetown City Council and partner institutions."
-        actions={
-          !tokens ? (
-            <Link className="button button-primary" to="/login">
-              Sign in to CRAM
-            </Link>
-          ) : (
-            <Link className="button" to="/profile">
-              View my access
-            </Link>
-          )
-        }
-      />
-
-      <section className="grid-3" aria-label="Platform status">
-        <article className="metric-card">
-          <span className="metric-label">API service</span>
-          <div className="metric-value">
-            <StatusBadge value={apiStatus} />
-          </div>
-          <span className="metric-detail">
-            {health.data
-              ? `${health.data.service} · v${health.data.version}`
-              : "Connectivity check"}
-          </span>
-        </article>
-        <article className="metric-card">
-          <span className="metric-label">Session</span>
-          <div className="metric-value">
-            {me.data ? me.data.username : tokens ? "Loading" : "Guest"}
-          </div>
-          <span className="metric-detail">
-            {me.data?.roles.map((role) => role.replaceAll("_", " ")).join(", ") ||
-              "Sign in for governed workspace access"}
-          </span>
-        </article>
-        <article className="metric-card">
-          <span className="metric-label">Available workspaces</span>
-          <div className="metric-value">{capabilities.length}</div>
-          <span className="metric-detail">Based on your effective permissions</span>
-        </article>
-      </section>
-
-      <section className="card system-workspaces">
-        <div className="card-header">
-          <div>
-            <h2>Your workspace</h2>
-            <p className="card-subtitle">
-              Only areas permitted for the current account are surfaced here.
-            </p>
-          </div>
-        </div>
-        {capabilities.length ? (
-          <div className="workspace-grid">
-            {capabilities.map((item) => (
-              <Link className="workspace-card" key={item.to} to={item.to}>
-                <span className="workspace-tag">{item.tag}</span>
-                <strong>{item.title}</strong>
-                <p>{item.description}</p>
-                <span className="workspace-link">Open workspace →</span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <div className="empty-state-mark">CR</div>
-            <strong>{tokens ? "No workspace permissions available" : "Sign in to begin"}</strong>
-            <p>
-              {tokens
-                ? "Your account does not currently expose a managed workspace."
-                : "Use your CRAM account to access datasets, GIS and governance tools."}
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section className="card system-foundation">
-        <div>
-          <p className="page-eyebrow">Current foundation</p>
-          <h2>Gate 2 — Data Platform Complete</h2>
+    <main className="overview-page">
+      <section className="overview-hero">
+        <div className="overview-copy">
+          <p className="eyebrow">Climate Risk Analytics Management Platform</p>
+          <h1>Climate intelligence for a more resilient Freetown.</h1>
           <p>
-            Catalogue, CSV preservation, versioning, validation, approval, publication and audit are
-            available as the governed data-platform foundation.
+            CRAM brings governed climate data, spatial intelligence, analytics and municipal
+            operations into one secure decision-support platform.
           </p>
+          <div className="hero-actions">
+            <Link className="primary-link" to="/dashboards">
+              Explore dashboards <Icon name="arrow" />
+            </Link>
+            <Link className="secondary-link" to="/datasets">
+              Open data catalogue
+            </Link>
+          </div>
         </div>
-        <StatusBadge value="Passed" />
+        <div className="climate-visual" aria-hidden="true">
+          <div className="visual-orbit orbit-one" />
+          <div className="visual-orbit orbit-two" />
+          <div className="visual-center">
+            <Icon name="map" />
+            <strong>CRAM</strong>
+            <span>Freetown</span>
+          </div>
+          <div className="visual-chip chip-heat">
+            <Icon name="heat" /> Heat
+          </div>
+          <div className="visual-chip chip-flood">
+            <Icon name="flood" /> Flood
+          </div>
+          <div className="visual-chip chip-tree">
+            <Icon name="trees" /> Trees
+          </div>
+        </div>
       </section>
+
+      <section className="overview-stats">
+        <article>
+          <span className="stat-icon green">
+            <Icon name="activity" />
+          </span>
+          <div>
+            <small>Platform status</small>
+            <strong className={online ? "text-success" : "text-danger"}>{apiStatus}</strong>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon blue">
+            <Icon name="data" />
+          </span>
+          <div>
+            <small>Data governance</small>
+            <strong>Version-aware lifecycle</strong>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon teal">
+            <Icon name="map" />
+          </span>
+          <div>
+            <small>Spatial platform</small>
+            <strong>PostGIS · GeoServer · MapLibre</strong>
+          </div>
+        </article>
+        <article>
+          <span className="stat-icon pale">
+            <Icon name="check" />
+          </span>
+          <div>
+            <small>Engineering baseline</small>
+            <strong>Milestones 0–12 complete</strong>
+          </div>
+        </article>
+      </section>
+
+      <div className="overview-columns">
+        <section className="overview-card">
+          <header>
+            <div>
+              <p className="eyebrow">Climate modules</p>
+              <h2>Risk intelligence workspace</h2>
+            </div>
+            <Link to="/dashboards">View all</Link>
+          </header>
+          <div className="quick-modules">
+            <Link to="/heat">
+              <span>
+                <Icon name="heat" />
+              </span>
+              <div>
+                <strong>Heat Analytics</strong>
+                <small>Weather and heat indicators</small>
+              </div>
+            </Link>
+            <Link to="/flood">
+              <span>
+                <Icon name="flood" />
+              </span>
+              <div>
+                <strong>Flood Monitoring</strong>
+                <small>Incidents, zones and risk</small>
+              </div>
+            </Link>
+            <Link to="/trees">
+              <span>
+                <Icon name="trees" />
+              </span>
+              <div>
+                <strong>Tree Monitoring</strong>
+                <small>Interventions and survival</small>
+              </div>
+            </Link>
+            <Link to="/vulnerability">
+              <span>
+                <Icon name="vulnerability" />
+              </span>
+              <div>
+                <strong>Vulnerability</strong>
+                <small>Climate and socio-economic risk</small>
+              </div>
+            </Link>
+          </div>
+        </section>
+        <section className="overview-card governance-card">
+          <header>
+            <div>
+              <p className="eyebrow">Governance</p>
+              <h2>Trusted data by design</h2>
+            </div>
+          </header>
+          <div className="governance-flow">
+            <span>Register</span>
+            <i>→</i>
+            <span>Validate</span>
+            <i>→</i>
+            <span>Approve</span>
+            <i>→</i>
+            <span>Publish</span>
+          </div>
+          <p>
+            Source preservation, dataset versioning, permission-separated approval and auditable
+            publication maintain a reliable evidence trail.
+          </p>
+          <div className="governance-links">
+            <Link to="/datasets">Data Catalogue</Link>
+            <Link to="/approvals">Approval Queue</Link>
+            <Link to="/audit">Audit Trail</Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
