@@ -26,7 +26,10 @@ test("TOR-aligned UI includes analytical charts, heatmaps, GIS layers and user m
   assert.match(users, /User & Access Management/);
   assert.match(userForm, /Create CRAM User/);
   assert.match(reports, /Report builder/);
-  assert.match(knowledge, /World Bank Documents & Reports API/);
+  assert.match(
+    knowledge,
+    /authoritative public climate resources|Public knowledge feed|Public references/,
+  );
   assert.match(citizen, /Community climate intelligence/);
   assert.match(modulePage, /ForecastChart/);
   assert.match(layout, /profile-dropdown/);

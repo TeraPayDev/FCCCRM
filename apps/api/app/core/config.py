@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     copernicus_cds_url: str = "https://cds.climate.copernicus.eu/api"
     copernicus_cds_key: SecretStr | None = None
 
+    # CRAM AI Assistant
+    openai_api_key: SecretStr | None = None
+    openai_model: str = "gpt-5-mini"
+    openai_timeout_seconds: float = 45.0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  VITE_API_URL: z.string().url().default("http://10.1.11.7:8000"),
+  VITE_API_URL: z.string().url().default("https://cram.yestechsl.com"),
 });
 
 export const env = envSchema.parse({
