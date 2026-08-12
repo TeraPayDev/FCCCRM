@@ -23,7 +23,23 @@ export type IconName =
   | "search"
   | "menu"
   | "close"
-  | "arrow";
+  | "arrow"
+  | "plus"
+  | "edit"
+  | "logout"
+  | "download"
+  | "refresh"
+  | "external"
+  | "calendar"
+  | "location"
+  | "shield"
+  | "spark"
+  | "upload"
+  | "filter"
+  | "info"
+  | "file"
+  | "more"
+  | "chevron";
 
 const paths: Record<IconName, ReactNode> = {
   home: (
@@ -146,6 +162,92 @@ const paths: Record<IconName, ReactNode> = {
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  edit: (
+    <>
+      <path d="M4 20h4l11-11-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M10 5H5v14h5" />
+      <path d="M13 8l4 4-4 4M8 12h9" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 6v5h-5" />
+      <path d="M4 18v-5h5" />
+      <path d="M6.2 9a7 7 0 0 1 11.5-2L20 11M4 13l2.3 4a7 7 0 0 0 11.5-2" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M14 4h6v6" />
+      <path d="m20 4-9 9" />
+      <path d="M18 13v7H4V6h7" />
+    </>
+  ),
+  calendar: (
+    <>
+      <path d="M5 4h14v16H5Z" />
+      <path d="M8 2v4M16 2v4M5 9h14" />
+    </>
+  ),
+  location: (
+    <>
+      <path d="M12 21s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z" />
+      <circle cx="12" cy="9" r="2.5" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7Z" />
+      <path d="M9 12h6" />
+    </>
+  ),
+  spark: (
+    <>
+      <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5Z" />
+      <path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7Z" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 21V9" />
+      <path d="m7 14 5-5 5 5" />
+      <path d="M5 3h14" />
+    </>
+  ),
+  filter: <path d="M4 5h16l-6 7v6l-4 2v-8Z" />,
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6M12 7h.01" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M6 3h9l4 4v14H6Z" />
+      <path d="M14 3v5h5" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  chevron: <path d="m8 10 4 4 4-4" />,
 };
 
 export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {

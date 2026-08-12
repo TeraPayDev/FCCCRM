@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { saveTokens } from "../auth/session";
 import { Icon } from "../components/Icon";
@@ -8,9 +8,12 @@ import "./auth.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("cramadmin");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    searchParams.get("reason") === "expired" ? "Your session expired. Please sign in again." : "",
+  );
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +59,27 @@ export function LoginPage() {
               <Icon name="check" /> Traceable decisions
             </span>
           </div>
+          <div className="login-insights" aria-label="CRAM platform capabilities">
+            <article>
+              <strong>6</strong>
+              <span>FCC & partner institutions</span>
+            </article>
+            <article>
+              <strong>7</strong>
+              <span>Role-based access profiles</span>
+            </article>
+            <article>
+              <Icon name="map" />
+              <span>GIS + live public feeds</span>
+            </article>
+            <article>
+              <Icon name="citizen" />
+              <span>Offline citizen reporting</span>
+            </article>
+          </div>
+          <p className="login-public-link">
+            <a href="/report-hazard">Public hazard reporting portal →</a>
+          </p>
         </div>
         <div className="login-landscape" aria-hidden="true">
           <i />

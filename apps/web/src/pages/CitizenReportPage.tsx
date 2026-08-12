@@ -346,73 +346,138 @@ export function CitizenReportPage() {
     }
   }
 
+  const hazardOptions = [
+    ["FLOOD", "Flood", "High water, blocked drainage or inundation"],
+    ["HEAT", "Extreme heat", "Unusually hot conditions or heat stress"],
+    ["TREE", "Tree / vegetation", "Damaged tree, planting or vegetation issue"],
+    ["LANDSLIDE", "Landslide", "Slope failure, rockfall or soil movement"],
+    ["OTHER", "Other", "Another climate or environmental hazard"],
+  ] as const;
+
   return (
     <main className="citizen-report-page">
+      <header className="citizen-public-header">
+        <div className="citizen-brand-mark">CR</div>
+        <div>
+          <strong>CRAM</strong>
+          <span>Freetown Climate Risk Reporting</span>
+        </div>
+        <div className={`citizen-network ${online ? "online" : "offline"}`}>
+          <span /> {online ? "Online" : "Offline"}
+        </div>
+      </header>
       <section className="citizen-report-card">
         <div className="citizen-report-heading">
-          <p>Freetown Climate Risk Reporting</p>
+          <p className="citizen-eyebrow">Community climate intelligence</p>
           <h1>Report a climate hazard</h1>
           <p>
-            Send a flood, heat, tree or other climate-risk observation to CRAM. GPS and a photo are
-            optional.
+            Help Freetown City Council understand what is happening on the ground. Your report can
+            be saved offline and synchronized when connectivity returns.
           </p>
         </div>
-
-        <div className="citizen-report-status">
-          <span>{online ? "Online" : "Offline"}</span>
-          <span>{queued} queued</span>
-          {syncing && <span>Synchronizing...</span>}
+        <div className="citizen-progress">
+          <span className="active">1</span>
+          <i />
+          <span>2</span>
+          <i />
+          <span>3</span>
+          <small>Describe</small>
+          <small>Evidence</small>
+          <small>Submit</small>
         </div>
-
         <form onSubmit={submit}>
-          <label>
-            Hazard type
-            <select value={hazard} onChange={(e) => setHazard(e.target.value)}>
-              <option value="FLOOD">FLOOD</option>
-              <option value="HEAT">HEAT</option>
-              <option value="TREE">TREE</option>
-              <option value="LANDSLIDE">LANDSLIDE</option>
-              <option value="OTHER">OTHER</option>
-            </select>
-          </label>
-
-          <label>
-            Description
+          <fieldset className="hazard-picker">
+            <legend>What are you reporting?</legend>
+            <div>
+              {hazardOptions.map(([value, label, hint]) => (
+                <label key={value} className={hazard === value ? "selected" : ""}>
+                  <input
+                    type="radio"
+                    name="hazard"
+                    value={value}
+                    checked={hazard === value}
+                    onChange={() => setHazard(value)}
+                  />
+                  <span className="hazard-symbol">
+                    {value === "FLOOD"
+                      ? "≈"
+                      : value === "HEAT"
+                        ? "°"
+                        : value === "TREE"
+                          ? "♧"
+                          : value === "LANDSLIDE"
+                            ? "△"
+                            : "!"}
+                  </span>
+                  <strong>{label}</strong>
+                  <small>{hint}</small>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="citizen-field">
+            Tell us what happened
             <textarea
               required
               minLength={10}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What happened and what can you see?"
+              placeholder="Describe what you can see, when it started and anything that may be at risk…"
             />
+            <span>{description.length} characters</span>
           </label>
-
-          <div className="citizen-report-location">
-            <button type="button" onClick={locate}>
-              Use my GPS
-            </button>
-
-            <span>
-              {coords
-                ? `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
-                : "No location captured"}
-            </span>
+          <div className="evidence-grid">
+            <section className={`evidence-card ${coords ? "complete" : ""}`}>
+              <div className="evidence-icon">⌖</div>
+              <div>
+                <strong>Location</strong>
+                <p>
+                  {coords
+                    ? `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
+                    : "Optional, but helps responders locate the hazard."}
+                </p>
+              </div>
+              <button type="button" onClick={locate}>
+                {coords ? "Update GPS" : "Use my GPS"}
+              </button>
+            </section>
+            <label className={`evidence-card upload-card ${photo ? "complete" : ""}`}>
+              <div className="evidence-icon">▣</div>
+              <div>
+                <strong>Photo evidence</strong>
+                <p>{photo ? photo.name : "Optional JPEG or PNG from your camera or device."}</p>
+              </div>
+              <span className="upload-button">{photo ? "Change photo" : "Choose photo"}</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                capture="environment"
+                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+              />
+            </label>
           </div>
-
-          <label>
-            Photo evidence (optional)
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              capture="environment"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
-
-          <button type="submit">{online ? "Submit report" : "Save for later"}</button>
-
+          <div className="citizen-submit-row">
+            <div>
+              <strong>{queued} saved on this device</strong>
+              <small>
+                {syncing
+                  ? "Synchronizing saved reports…"
+                  : online
+                    ? "Reports can be submitted now."
+                    : "New reports will be saved locally."}
+              </small>
+            </div>
+            <button type="submit">
+              {online ? "Submit report" : "Save for later"}
+              <span>→</span>
+            </button>
+          </div>
           {message && <p className="citizen-report-message">{message}</p>}
         </form>
+        <footer className="citizen-privacy">
+          CRAM stores only the information you submit. GPS and photographs are optional and reports
+          are reviewed before operational/public use.
+        </footer>
       </section>
     </main>
   );

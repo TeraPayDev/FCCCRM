@@ -301,3 +301,108 @@
     gap: 4px;
   }
 }
+.profile-menu {
+  position: relative;
+}
+.profile-chip {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  padding: 5px 7px !important;
+}
+.profile-chip:hover {
+  background: var(--surface-subtle) !important;
+  transform: none !important;
+}
+.profile-chevron {
+  width: 14px;
+  color: #8aa0aa;
+  transition: transform 0.18s ease;
+}
+.profile-chip[aria-expanded="true"] .profile-chevron {
+  transform: rotate(180deg);
+}
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 9px);
+  width: 260px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  box-shadow: 0 18px 45px rgba(24, 54, 68, 0.16);
+  padding: 8px;
+  z-index: 80;
+  animation: menuIn 0.16s ease-out;
+}
+.profile-dropdown-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 8px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 5px;
+}
+.profile-dropdown-head strong,
+.profile-dropdown-head span,
+.profile-dropdown-head small {
+  display: block;
+}
+.profile-dropdown-head strong {
+  font-size: 0.76rem;
+  color: var(--ink);
+}
+.profile-dropdown-head span {
+  font-size: 0.64rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-dropdown-head small {
+  font-size: 0.6rem;
+  text-transform: capitalize;
+  color: var(--green-deep);
+  margin-top: 2px;
+}
+.profile-dropdown a,
+.profile-dropdown > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #4d6674;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+}
+.profile-dropdown a:hover,
+.profile-dropdown > button:hover {
+  background: #f3f8f9 !important;
+  color: var(--ink);
+  transform: none !important;
+}
+.profile-dropdown svg {
+  width: 16px;
+}
+.profile-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 5px 3px;
+}
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

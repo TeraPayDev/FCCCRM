@@ -118,6 +118,31 @@ def decide_approval(
 def publish_version(session: Session, version: DatasetVersion, actor: User) -> DatasetVersion:
     if version.status != "APPROVED":
         raise LifecycleError("Only an approved dataset version can be published.")
+
+    previous_published = session.scalars(
+        select(DatasetVersion).where(
+            DatasetVersion.dataset_id == version.dataset_id,
+            DatasetVersion.id != version.id,
+            DatasetVersion.status == "PUBLISHED",
+        )
+    ).all()
+    for previous in previous_published:
+        _history(
+            session,
+            previous,
+            to_status="SUPERSEDED",
+            actor=actor,
+            comment=f"Superseded by version {version.version_number}.",
+        )
+        record_audit_event(
+            session,
+            action="dataset.version.supersede",
+            resource_type="dataset_version",
+            resource_id=previous.id,
+            actor=actor,
+            details={"superseded_by_version_id": str(version.id)},
+        )
+
     _history(session, version, to_status="PUBLISHED", actor=actor)
     record_audit_event(
         session,
@@ -125,6 +150,7 @@ def publish_version(session: Session, version: DatasetVersion, actor: User) -> D
         resource_type="dataset_version",
         resource_id=version.id,
         actor=actor,
+        details={"superseded_version_ids": [str(item.id) for item in previous_published]},
     )
     session.flush()
     return version

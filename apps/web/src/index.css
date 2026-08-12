@@ -194,3 +194,100 @@ th {
     flex-direction: column;
   }
 }
+
+/* Bid-demo product refinement: shared interaction language */
+.button,
+.secondary-button,
+.secondary-action,
+.small-action,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.secondary-button,
+.secondary-action,
+.small-action {
+  background: #fff;
+  color: var(--blue-deep);
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 6px rgba(24, 71, 91, 0.05);
+}
+.secondary-button:hover,
+.secondary-action:hover,
+.small-action:hover {
+  background: #f5fafb;
+  color: var(--ink);
+  border-color: #b9cfd5;
+  filter: none;
+}
+.small-action {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+}
+.icon-button svg,
+.secondary-action svg,
+.secondary-button svg,
+.small-action svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(36, 119, 183, 0.22);
+  outline-offset: 2px;
+}
+.module-shell,
+.page-wrap,
+.datasets-page,
+.map-page {
+  animation: pageEnter 0.28s ease-out both;
+}
+.surface-card,
+.module-card,
+.data-section,
+.viz-card,
+.datasets-card {
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+.module-table tbody tr,
+table tbody tr {
+  transition: background 0.15s ease;
+}
+.module-table tbody tr:hover,
+table tbody tr:hover {
+  background: #f8fbfc;
+}
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+  .module-shell,
+  .page-wrap,
+  .datasets-page,
+  .map-page {
+    animation: none !important;
+  }
+}

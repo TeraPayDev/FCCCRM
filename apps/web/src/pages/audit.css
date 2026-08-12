@@ -93,3 +93,30 @@
     width: 100%;
   }
 }
+.audit-panel header .eyebrow {
+  margin-bottom: 4px !important;
+}
+.audit-action {
+  display: inline-flex;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #f1f7f8;
+  color: #3f6573;
+  font-weight: 700;
+}
+.audit-details summary {
+  cursor: pointer;
+  color: var(--blue-deep);
+  font-weight: 750;
+  font-size: 0.68rem;
+}
+.audit-details code {
+  display: block;
+  max-width: 420px;
+  margin-top: 7px;
+  max-height: 180px;
+  overflow: auto;
+}
+.audit-filters input[type="date"] {
+  min-width: 145px;
+}

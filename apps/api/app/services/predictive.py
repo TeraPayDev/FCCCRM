@@ -9,13 +9,21 @@ from statistics import fmean
 class ForecastPoint:
     period: int
     value: float
+    lower: float
+    upper: float
 
 
-def _linear_forecast(values: list[float], periods: int) -> list[ForecastPoint]:
+@dataclass(frozen=True)
+class TrendFit:
+    slope: float
+    intercept: float
+    r_squared: float
+    residual_sigma: float
+
+
+def _fit_linear(values: list[float]) -> TrendFit:
     if len(values) < 2:
         raise ValueError("At least two observations are required for a trend forecast.")
-    if periods < 1 or periods > 60:
-        raise ValueError("Forecast periods must be between 1 and 60.")
     n = len(values)
     xs = list(range(n))
     xbar = fmean(xs)
@@ -23,28 +31,81 @@ def _linear_forecast(values: list[float], periods: int) -> list[ForecastPoint]:
     denominator = sum((x - xbar) ** 2 for x in xs)
     slope = sum((x - xbar) * (y - ybar) for x, y in zip(xs, values, strict=True)) / denominator
     intercept = ybar - slope * xbar
-    return [ForecastPoint(i + 1, intercept + slope * (n + i)) for i in range(periods)]
+    fitted = [intercept + slope * x for x in xs]
+    residuals = [actual - expected for actual, expected in zip(values, fitted, strict=True)]
+    ss_res = sum(value**2 for value in residuals)
+    ss_tot = sum((value - ybar) ** 2 for value in values)
+    r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 1.0
+    residual_sigma = math.sqrt(ss_res / max(1, n - 2))
+    return TrendFit(slope, intercept, max(0.0, min(1.0, r_squared)), residual_sigma)
+
+
+def _linear_forecast(values: list[float], periods: int) -> tuple[TrendFit, list[ForecastPoint]]:
+    if periods < 1 or periods > 60:
+        raise ValueError("Forecast periods must be between 1 and 60.")
+    fit = _fit_linear(values)
+    n = len(values)
+    band = max(0.15, fit.residual_sigma * 1.96)
+    points = [
+        ForecastPoint(
+            i + 1,
+            fit.intercept + fit.slope * (n + i),
+            fit.intercept + fit.slope * (n + i) - band,
+            fit.intercept + fit.slope * (n + i) + band,
+        )
+        for i in range(periods)
+    ]
+    return fit, points
 
 
 def heat_trend(values: list[float], periods: int = 7) -> dict[str, object]:
-    points = _linear_forecast(values, periods)
+    fit, points = _linear_forecast(values, periods)
     return {
-        "engine": "linear-trend-v1",
+        "engine": "linear-trend-v2",
         "domain": "heat",
-        "forecast": [{"period": p.period, "value": round(p.value, 3)} for p in points],
-        "warning": "Engineering baseline only; operational thresholds require an approved methodology.",
+        "forecast": [
+            {
+                "period": p.period,
+                "value": round(p.value, 3),
+                "lower": round(p.lower, 3),
+                "upper": round(p.upper, 3),
+            }
+            for p in points
+        ],
+        "metrics": {
+            "slope_per_period": round(fit.slope, 6),
+            "r_squared": round(fit.r_squared, 4),
+            "residual_sigma": round(fit.residual_sigma, 4),
+            "observations": len(values),
+        },
+        "trend_direction": (
+            "WARMING" if fit.slope > 0.01 else "COOLING" if fit.slope < -0.01 else "STABLE"
+        ),
+        "warning": (
+            "Engineering baseline only; confidence band reflects trend-fit residuals, "
+            "not a calibrated operational climate model."
+        ),
     }
 
 
 def canopy_trend(values: list[float], periods: int = 4) -> dict[str, object]:
-    points = _linear_forecast(values, periods)
+    fit, points = _linear_forecast(values, periods)
     return {
-        "engine": "linear-trend-v1",
+        "engine": "linear-trend-v2",
         "domain": "canopy",
         "forecast": [
-            {"period": p.period, "value": round(max(0.0, min(100.0, p.value)), 3)} for p in points
+            {
+                "period": p.period,
+                "value": round(max(0.0, min(100.0, p.value)), 3),
+                "lower": round(max(0.0, min(100.0, p.lower)), 3),
+                "upper": round(max(0.0, min(100.0, p.upper)), 3),
+            }
+            for p in points
         ],
-        "warning": "Trend projection is bounded to 0-100%; field/remote-sensing validation is required.",
+        "metrics": {"slope_per_period": round(fit.slope, 6), "r_squared": round(fit.r_squared, 4)},
+        "warning": (
+            "Trend projection is bounded to 0-100%; field/remote-sensing validation is required."
+        ),
     }
 
 

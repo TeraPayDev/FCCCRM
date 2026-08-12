@@ -153,6 +153,33 @@ def test_catalogue_ingestion_validation_and_lifecycle(
             publish_version(session, good_version, actor)
             assert good_version.status == "PUBLISHED"
             assert approval.status == "APPROVED"
+            published_version_id = good_version.id
+
+        with factory() as session, session.begin():
+            from app.models.data_management import Dataset
+
+            first_published = session.get(DatasetVersion, published_version_id)
+            dataset_model = session.get(Dataset, dataset_id)
+            actor = session.get(User, user_id)
+            assert first_published is not None
+            assert dataset_model is not None
+            assert actor is not None
+            replacement, _ = create_csv_upload(
+                session,
+                dataset=dataset_model,
+                source_id=None,
+                actor=actor,
+                filename="weather-replacement.csv",
+                content_type="text/csv",
+                content=b"temperature_c\n29.0\n29.5\n",
+            )
+            run = create_validation_run(session, version=replacement, execution_mode="SYNC")
+            execute_validation(session, run=run, actor=actor)
+            approval = submit_for_approval(session, replacement, actor)
+            decide_approval(session, approval, actor=actor, approve=True, comments="replacement")
+            publish_version(session, replacement, actor)
+            assert replacement.status == "PUBLISHED"
+            assert first_published.status == "SUPERSEDED"
 
         with factory() as session:
             assert session.scalar(select(Approval).where(Approval.status == "APPROVED")) is not None

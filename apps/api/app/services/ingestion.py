@@ -8,9 +8,16 @@ from pathlib import PurePath
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.data_management import Dataset, DatasetSource, DatasetUpload, DatasetVersion
+from app.models.data_management import (
+    Dataset,
+    DatasetField,
+    DatasetSource,
+    DatasetUpload,
+    DatasetVersion,
+)
 from app.models.identity import User
 from app.services.audit import record_audit_event
+from app.services.csv_schema import CsvSchemaError, infer_csv_schema
 from app.services.lifecycle import transition_version
 from app.services.object_storage import put_object
 
@@ -20,6 +27,73 @@ CSV_MIME_TYPES = {"text/csv", "application/csv", "application/vnd.ms-excel", "te
 
 class UploadValidationError(ValueError):
     pass
+
+
+def _types_compatible(configured: str, inferred: str) -> bool:
+    configured = configured.lower()
+    inferred = inferred.lower()
+    if configured == inferred:
+        return True
+    if configured in {"number", "float", "decimal"} and inferred == "integer":
+        return True
+    if configured == "string":
+        return True
+    return False
+
+
+def ensure_csv_schema(session: Session, *, dataset: Dataset, content: bytes) -> int:
+    try:
+        inferred, row_count = infer_csv_schema(content)
+    except CsvSchemaError as exc:
+        raise UploadValidationError(str(exc)) from exc
+    existing = list(
+        session.scalars(
+            select(DatasetField)
+            .where(DatasetField.dataset_id == dataset.id)
+            .order_by(DatasetField.ordinal)
+        ).all()
+    )
+
+    if not existing:
+        for inferred_field in inferred:
+            session.add(DatasetField(dataset_id=dataset.id, **inferred_field))
+        session.flush()
+        return row_count
+
+    inferred_by_name = {str(inferred_field["name"]): inferred_field for inferred_field in inferred}
+    missing = [
+        existing_field.name
+        for existing_field in existing
+        if existing_field.is_required and existing_field.name not in inferred_by_name
+    ]
+    if missing:
+        raise UploadValidationError(
+            "CSV is missing required configured columns: " + ", ".join(sorted(missing)) + "."
+        )
+
+    conflicts: list[str] = []
+    for existing_field in existing:
+        detected = inferred_by_name.get(existing_field.name)
+        if detected is None:
+            continue
+        inferred_type = str(detected["data_type"])
+        if not _types_compatible(existing_field.data_type, inferred_type):
+            conflicts.append(
+                f"{existing_field.name} "
+                f"({existing_field.data_type} configured, {inferred_type} detected)"
+            )
+
+    if conflicts:
+        raise UploadValidationError(
+            "CSV schema conflicts with the configured dataset schema: " + "; ".join(conflicts) + "."
+        )
+
+    existing_names = {existing_field.name for existing_field in existing}
+    for inferred_field in inferred:
+        if str(inferred_field["name"]) not in existing_names:
+            session.add(DatasetField(dataset_id=dataset.id, **inferred_field))
+    session.flush()
+    return row_count
 
 
 def safe_filename(filename: str) -> str:
@@ -58,6 +132,8 @@ def create_csv_upload(
     if normalized_type not in CSV_MIME_TYPES:
         raise UploadValidationError("Unsupported CSV content type.")
 
+    row_count = ensure_csv_schema(session, dataset=dataset, content=content)
+
     next_version = (
         int(
             session.scalar(
@@ -76,6 +152,7 @@ def create_csv_upload(
         version_number=next_version,
         status="DRAFT",
         checksum_sha256=checksum,
+        row_count=row_count,
     )
     session.add(version)
     session.flush()

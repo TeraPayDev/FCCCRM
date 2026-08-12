@@ -1,0 +1,11 @@
+.climate-map {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  background: #eaf2f4;
+}
+.climate-map .maplibregl-ctrl-attrib {
+  font-size: 9px;
+}
