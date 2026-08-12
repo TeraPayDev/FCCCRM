@@ -15,6 +15,10 @@ import { DashboardsPage } from "../pages/DashboardsPage";
 import { RoadmapModulePage } from "../pages/RoadmapModulePage";
 import { CitizenReportPage } from "../pages/CitizenReportPage";
 import { SessionGuard } from "../auth/SessionGuard";
+import { UserManagementPage } from "../pages/UserManagementPage";
+import { UserFormPage } from "../pages/UserFormPage";
+import { ReportsPage } from "../pages/ReportsPage";
+import { KnowledgeHubPage } from "../pages/KnowledgeHubPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -29,6 +33,9 @@ export const router = createBrowserRouter([
           { path: "/about", element: <AboutPage /> },
           { path: "/profile", element: <ProfilePage /> },
           { path: "/organisations", element: <OrganisationsPage /> },
+          { path: "/users", element: <UserManagementPage /> },
+          { path: "/users/new", element: <UserFormPage /> },
+          { path: "/users/:userId/edit", element: <UserFormPage /> },
           { path: "/audit", element: <AuditPage /> },
           { path: "/map", element: <MapPage /> },
           { path: "/datasets", element: <DatasetsPage /> },
@@ -42,9 +49,10 @@ export const router = createBrowserRouter([
           { path: "/vulnerability", element: <RoadmapModulePage module="vulnerability" /> },
           { path: "/citizen-reports", element: <RoadmapModulePage module="citizen" /> },
           { path: "/notifications", element: <RoadmapModulePage module="notifications" /> },
-          { path: "/reports", element: <RoadmapModulePage module="reports" /> },
-          { path: "/knowledge", element: <RoadmapModulePage module="knowledge" /> },
+          { path: "/reports", element: <ReportsPage /> },
+          { path: "/knowledge", element: <KnowledgeHubPage /> },
           { path: "/administration", element: <RoadmapModulePage module="administration" /> },
+          { path: "/system-status", element: <SystemStatusPage /> },
           { path: "/analytics", element: <RoadmapModulePage module="analytics" /> },
           { path: "*", element: <NotFoundPage /> },
         ],

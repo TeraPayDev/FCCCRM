@@ -10,7 +10,18 @@ from app.services.predictive import (
 
 def test_heat_trend_projects_forward() -> None:
     result = heat_trend([30.0, 31.0, 32.0], 2)
-    assert result["forecast"] == [{"period": 1, "value": 33.0}, {"period": 2, "value": 34.0}]
+    forecast = result["forecast"]
+    assert isinstance(forecast, list)
+    assert [point["value"] for point in forecast if isinstance(point, dict)] == [33.0, 34.0]
+    assert all(
+        isinstance(point, dict)
+        and float(point["lower"]) <= float(point["value"]) <= float(point["upper"])
+        for point in forecast
+    )
+    metrics = result["metrics"]
+    assert isinstance(metrics, dict)
+    assert metrics["observations"] == 3
+    assert result["trend_direction"] == "WARMING"
 
 
 def test_canopy_is_bounded() -> None:

@@ -85,8 +85,8 @@ export function SystemStatusPage() {
             <Icon name="check" />
           </span>
           <div>
-            <small>Engineering baseline</small>
-            <strong>Milestones 0–12 complete</strong>
+            <small>Solution readiness</small>
+            <strong>Integrated working prototype</strong>
           </div>
         </article>
       </section>

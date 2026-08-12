@@ -59,6 +59,27 @@ export function LoginPage() {
               <Icon name="check" /> Traceable decisions
             </span>
           </div>
+          <div className="login-insights" aria-label="CRAM platform capabilities">
+            <article>
+              <strong>6</strong>
+              <span>FCC & partner institutions</span>
+            </article>
+            <article>
+              <strong>7</strong>
+              <span>Role-based access profiles</span>
+            </article>
+            <article>
+              <Icon name="map" />
+              <span>GIS + live public feeds</span>
+            </article>
+            <article>
+              <Icon name="citizen" />
+              <span>Offline citizen reporting</span>
+            </article>
+          </div>
+          <p className="login-public-link">
+            <a href="/report-hazard">Public hazard reporting portal →</a>
+          </p>
         </div>
         <div className="login-landscape" aria-hidden="true">
           <i />

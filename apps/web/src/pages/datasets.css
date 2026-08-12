@@ -688,3 +688,33 @@ dl {
     width: 100%;
   }
 }
+.approval-status {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.approval-status.approved {
+  background: var(--green-soft);
+  color: var(--green-deep);
+}
+.approval-status.pending,
+.approval-status.submitted {
+  background: #fff7e8;
+  color: #8a6320;
+}
+.approval-status.rejected {
+  background: #fff0f1;
+  color: var(--danger);
+}
+.approval-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.approval-actions button {
+  padding: 7px 10px;
+  font-size: 0.67rem;
+}

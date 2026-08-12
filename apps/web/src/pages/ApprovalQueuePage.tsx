@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Icon } from "../components/Icon";
 import { dataPlatformApi, type Approval } from "../api/client";
 import { loadTokens } from "../auth/session";
 import "./datasets.css";
@@ -58,7 +59,9 @@ export function ApprovalQueuePage() {
           <h1>Dataset Approval Queue</h1>
           <p>Permission-separated review of validated dataset versions.</p>
         </div>
-        <Link to="/datasets">Catalogue</Link>
+        <Link to="/datasets" className="button secondary-button icon-button">
+          <Icon name="data" /> Data Catalogue
+        </Link>
       </header>
       {message && <p>{message}</p>}
       <section className="datasets-card">
@@ -76,16 +79,30 @@ export function ApprovalQueuePage() {
               <tr key={approval.id}>
                 <td>{new Date(approval.submitted_at).toLocaleString()}</td>
                 <td>{approval.dataset_version_id}</td>
-                <td>{approval.status}</td>
+                <td>
+                  <span className={`approval-status ${approval.status.toLowerCase()}`}>
+                    {approval.status}
+                  </span>
+                </td>
                 <td>
                   {approval.status === "PENDING" ? (
                     <>
-                      <button type="button" onClick={() => void decide(approval, true)}>
-                        Approve
-                      </button>{" "}
-                      <button type="button" onClick={() => void decide(approval, false)}>
-                        Reject
-                      </button>
+                      <span className="approval-actions">
+                        <button
+                          className="icon-button"
+                          type="button"
+                          onClick={() => void decide(approval, true)}
+                        >
+                          <Icon name="check" /> Approve
+                        </button>
+                        <button
+                          className="secondary-action"
+                          type="button"
+                          onClick={() => void decide(approval, false)}
+                        >
+                          Reject
+                        </button>
+                      </span>
                     </>
                   ) : (
                     (approval.comments ?? "—")
@@ -95,6 +112,9 @@ export function ApprovalQueuePage() {
             ))}
           </tbody>
         </table>
+        {!approvals.length && (
+          <div className="empty-inline">No dataset versions are waiting for review.</div>
+        )}
       </section>
     </main>
   );

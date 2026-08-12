@@ -56,6 +56,28 @@ export type CurrentUser = z.infer<typeof currentUserSchema>;
 export type Organisation = z.infer<typeof organisationSchema>;
 export type OrganisationUser = z.infer<typeof organisationUserSchema>;
 
+const roleSummarySchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+});
+const userAdminSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  email: z.string(),
+  is_active: z.boolean(),
+  organisation_id: z.string().nullable(),
+  organisation_code: z.string().nullable(),
+  organisation_name: z.string().nullable(),
+  roles: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+  locked_until: z.string().nullable().optional(),
+});
+export type RoleSummary = z.infer<typeof roleSummarySchema>;
+export type UserAdmin = z.infer<typeof userAdminSchema>;
+
 export class ApiError extends Error {
   public readonly status?: number;
 
@@ -217,6 +239,45 @@ export const api = {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ organisation_id: organisationId }),
+    }),
+  users: (accessToken: string) =>
+    requestJson("/api/v1/users", z.array(userAdminSchema), { headers: authHeaders(accessToken) }),
+  user: (accessToken: string, userId: string) =>
+    requestJson(`/api/v1/users/${userId}`, userAdminSchema, { headers: authHeaders(accessToken) }),
+  roles: (accessToken: string) =>
+    requestJson("/api/v1/users/roles", z.array(roleSummarySchema), {
+      headers: authHeaders(accessToken),
+    }),
+  createUser: (
+    accessToken: string,
+    payload: {
+      username: string;
+      email: string;
+      password: string;
+      organisation_id: string | null;
+      role_codes: string[];
+    },
+  ) =>
+    requestJson("/api/v1/users", userAdminSchema, {
+      method: "POST",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  updateUser: (
+    accessToken: string,
+    userId: string,
+    payload: {
+      email?: string;
+      organisation_id?: string | null;
+      role_codes?: string[];
+      is_active?: boolean;
+      password?: string;
+    },
+  ) =>
+    requestJson(`/api/v1/users/${userId}`, userAdminSchema, {
+      method: "PATCH",
+      headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     }),
 };
 
@@ -540,6 +601,21 @@ export const roadmapApi = {
       headers: { ...authHeaders(accessToken), "Content-Type": "application/json" },
       body: payload ? JSON.stringify(payload) : undefined,
     }),
+  download: async (accessToken: string, path: string, fallbackName: string) => {
+    const response = await fetchWithSessionRetry(path, { headers: authHeaders(accessToken) });
+    if (!response.ok) throw new ApiError(await errorMessage(response), response.status);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    const disposition = response.headers.get("Content-Disposition");
+    const match = disposition?.match(/filename="?([^";]+)"?/i);
+    anchor.download = match?.[1] ?? fallbackName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const citizenApi = {

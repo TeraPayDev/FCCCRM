@@ -1,0 +1,134 @@
+.knowledge-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  gap: 9px;
+  margin: 14px 0;
+}
+.knowledge-form {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.knowledge-form > div {
+  grid-column: 1/-1;
+}
+.knowledge-form h2 {
+  margin: 0;
+}
+.knowledge-form p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.knowledge-form label {
+  display: grid;
+  gap: 7px;
+}
+.knowledge-form .wide {
+  grid-column: 1/-1;
+}
+.knowledge-form textarea {
+  min-height: 90px;
+}
+.knowledge-form button {
+  justify-self: start;
+}
+.knowledge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 13px;
+}
+.knowledge-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 17px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-height: 210px;
+  transition: 0.18s ease;
+}
+.knowledge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.knowledge-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.source-pill {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+.source-pill.governed {
+  background: var(--green-soft);
+  color: var(--green-deep);
+}
+.source-pill.external {
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+}
+.knowledge-card h3 {
+  margin: 14px 0 8px;
+  font-size: 0.92rem;
+}
+.knowledge-card p {
+  font-size: 0.73rem;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.knowledge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+  font-size: 0.64rem;
+  color: #6d8490;
+}
+.knowledge-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.knowledge-meta svg {
+  width: 13px;
+}
+.knowledge-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 13px;
+}
+.knowledge-actions .button,
+.knowledge-actions button {
+  padding: 7px 9px;
+  font-size: 0.67rem;
+}
+@media (max-width: 850px) {
+  .knowledge-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .knowledge-toolbar button {
+    justify-self: start;
+  }
+  .knowledge-form {
+    grid-template-columns: 1fr;
+  }
+  .knowledge-form .wide,
+  .knowledge-form > div {
+    grid-column: auto;
+  }
+}

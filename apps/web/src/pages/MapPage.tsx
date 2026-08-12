@@ -9,448 +9,365 @@ import {
   type MapMouseEvent,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Link, useNavigate } from "react-router-dom";
-
-import { milestone78Api, roadmapApi, type GeographicArea, type SpatialLayer } from "../api/client";
+import { useNavigate } from "react-router-dom";
+import { milestone78Api, roadmapApi, type GeographicArea } from "../api/client";
 import { loadTokens } from "../auth/session";
 import "./map.css";
 
-type GeoJsonGeometry =
-  | {
-      type: "Point";
-      coordinates: number[];
-    }
-  | {
-      type: "MultiPoint";
-      coordinates: number[][];
-    }
-  | {
-      type: "LineString";
-      coordinates: number[][];
-    }
-  | {
-      type: "MultiLineString";
-      coordinates: number[][][];
-    }
-  | {
-      type: "Polygon";
-      coordinates: number[][][];
-    }
-  | {
-      type: "MultiPolygon";
-      coordinates: number[][][][];
-    };
-
-type AreaFeature = {
-  type: "Feature";
-  id: string;
-  properties: Record<string, unknown>;
-  geometry: GeoJsonGeometry;
-};
-
-type AreaFeatureCollection = {
-  type: "FeatureCollection";
-  features: AreaFeature[];
-};
-
-type LiveFeature = {
+type Feature = {
   type: "Feature";
   properties: Record<string, unknown>;
-  geometry: GeoJsonGeometry;
+  geometry: { type: string; coordinates: unknown };
 };
-
-type LiveFeatureCollection = {
-  type: "FeatureCollection";
-  features: LiveFeature[];
+type Toggles = {
+  temperature: boolean;
+  rainfall: boolean;
+  trees: boolean;
+  waterways: boolean;
+  boundary: boolean;
+  governed: boolean;
 };
+const initial: Toggles = {
+  temperature: true,
+  rainfall: false,
+  trees: true,
+  waterways: true,
+  boundary: true,
+  governed: true,
+};
+function features(payload: Record<string, unknown> | null) {
+  const raw = payload?.features;
+  return Array.isArray(raw)
+    ? raw.filter((f): f is Feature => Boolean(f && typeof f === "object"))
+    : [];
+}
 
 export function MapPage() {
   const navigate = useNavigate();
-
-  const mapNode = useRef<HTMLDivElement | null>(null);
+  const node = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
-
-  const [layers, setLayers] = useState<SpatialLayer[]>([]);
   const [areas, setAreas] = useState<GeographicArea[]>([]);
+  const [reference, setReference] = useState<Record<string, unknown> | null>(null);
+  const [weatherGrid, setWeatherGrid] = useState<Record<string, unknown> | null>(null);
+  const [toggles, setToggles] = useState<Toggles>(initial);
   const [coordinates, setCoordinates] = useState("Move pointer over map");
   const [error, setError] = useState("");
-  const [liveReference, setLiveReference] = useState<Record<string, unknown> | null>(null);
-  const [liveVisible, setLiveVisible] = useState(true);
-
   useEffect(() => {
-    const tokens = loadTokens();
-
-    if (!tokens) {
-      navigate("/login");
+    const tok = loadTokens();
+    if (!tok) {
+      navigate("/login?reason=expired");
       return;
     }
-
-    const accessToken = tokens.access_token;
     let cancelled = false;
-
-    async function loadSpatialData() {
-      const governed = await Promise.allSettled([
-        milestone78Api.spatialLayers(accessToken),
-        milestone78Api.geographicAreas(accessToken),
+    const load = async () => {
+      const [a, r, g] = await Promise.allSettled([
+        milestone78Api.geographicAreas(tok.access_token),
+        roadmapApi.object(tok.access_token, "/api/v1/public-data/gis/reference"),
+        roadmapApi.object(tok.access_token, "/api/v1/public-data/weather/grid"),
       ]);
-
       if (cancelled) return;
-
-      const [layerResult, areaResult] = governed;
-      if (layerResult.status === "fulfilled") setLayers(layerResult.value);
-      if (areaResult.status === "fulfilled") setAreas(areaResult.value);
-
-      const governedErrors = governed
-        .filter((result) => result.status === "rejected")
-        .map((result) =>
-          result.status === "rejected" && result.reason instanceof Error
-            ? result.reason.message
-            : "Unable to load governed GIS data.",
+      if (a.status === "fulfilled") setAreas(a.value);
+      if (r.status === "fulfilled") setReference(r.value);
+      if (g.status === "fulfilled") setWeatherGrid(g.value);
+      const errs = [a, r, g]
+        .filter((x) => x.status === "rejected")
+        .map((x) =>
+          x.status === "rejected" && x.reason instanceof Error
+            ? x.reason.message
+            : "Layer unavailable",
         );
-
-      try {
-        const liveData = await roadmapApi.object(accessToken, "/api/v1/public-data/gis/reference");
-        if (!cancelled) setLiveReference(liveData);
-      } catch (caught) {
-        governedErrors.push(
-          caught instanceof Error
-            ? `Live public reference unavailable: ${caught.message}`
-            : "Live public reference is temporarily unavailable.",
-        );
-      }
-
-      if (!cancelled) setError(governedErrors.join(" "));
-    }
-
-    void loadSpatialData();
-
+      setError(errs.join(" "));
+    };
+    void load();
     return () => {
       cancelled = true;
     };
   }, [navigate]);
-
   useEffect(() => {
-    if (!mapNode.current || mapRef.current) {
-      return;
-    }
-
+    if (!node.current || mapRef.current) return;
     const map = new Map({
-      container: mapNode.current,
+      container: node.current,
       style: {
         version: 8,
         sources: {
-          "osm-basemap": {
+          osm: {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
             attribution: "© OpenStreetMap contributors",
           },
         },
-        layers: [{ id: "osm-basemap", type: "raster", source: "osm-basemap" }],
+        layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 0.82 } }],
       },
-      center: [-13.25, 8.45],
-      zoom: 10,
+      center: [-13.24, 8.455],
+      zoom: 11,
     });
-
     map.addControl(new NavigationControl(), "top-right");
-
-    map.addControl(
-      new ScaleControl({
-        unit: "metric",
-      }),
+    map.addControl(new ScaleControl({ unit: "metric" }));
+    map.on("mousemove", (e: MapMouseEvent) =>
+      setCoordinates(`${e.lngLat.lng.toFixed(5)}, ${e.lngLat.lat.toFixed(5)}`),
     );
-
-    map.on("mousemove", (event: MapMouseEvent) => {
-      setCoordinates(`${event.lngLat.lng.toFixed(5)}, ${event.lngLat.lat.toFixed(5)}`);
-    });
-
     mapRef.current = map;
-
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
-
   useEffect(() => {
     const map = mapRef.current;
-
-    if (!map || areas.length === 0) {
-      return;
-    }
-
-    const activeMap: Map = map;
-
-    const features: AreaFeature[] = areas
-      .filter(
-        (
-          area,
-        ): area is GeographicArea & {
-          geometry: GeoJsonGeometry;
-        } => area.geometry !== null,
-      )
-      .map((area) => ({
-        type: "Feature",
-        id: area.id,
-        properties: {
-          code: area.code,
-          name: area.name,
-          area_type: area.area_type,
-          ...area.metadata,
-        },
-        geometry: area.geometry,
-      }));
-
-    const collection: AreaFeatureCollection = {
-      type: "FeatureCollection",
-      features,
-    };
-
-    function applySpatialLayers() {
-      const existingSource = activeMap.getSource("cram-areas");
-
-      if (existingSource instanceof GeoJSONSource) {
-        existingSource.setData(collection);
-        return;
-      }
-
-      activeMap.addSource("cram-areas", {
-        type: "geojson",
-        data: collection,
-      });
-
-      activeMap.addLayer({
-        id: "cram-area-fill",
-        type: "fill",
-        source: "cram-areas",
-        paint: {
-          "fill-opacity": 0.25,
-        },
-      });
-
-      activeMap.addLayer({
-        id: "cram-area-line",
-        type: "line",
-        source: "cram-areas",
-        paint: {
-          "line-width": 2,
-        },
-      });
-
-      const geoserverBase =
-        `${window.location.protocol}//` + `${window.location.hostname}:8080/geoserver/cram/wms`;
-
-      activeMap.addSource("cram-geoserver", {
-        type: "raster",
-        tiles: [
-          `${geoserverBase}` +
-            "?service=WMS" +
-            "&version=1.1.1" +
-            "&request=GetMap" +
-            "&layers=cram:geographic_areas" +
-            "&styles=" +
-            "&bbox={bbox-epsg-3857}" +
-            "&width=256" +
-            "&height=256" +
-            "&srs=EPSG:3857" +
-            "&format=image/png" +
-            "&transparent=true",
-        ],
-        tileSize: 256,
-      });
-
-      activeMap.addLayer({
-        id: "cram-geoserver-published",
-        type: "raster",
-        source: "cram-geoserver",
-        paint: {
-          "raster-opacity": 0.35,
-        },
-      });
-
-      activeMap.on("click", "cram-area-fill", (event: MapLayerMouseEvent) => {
-        const feature = event.features?.[0];
-
-        if (!feature) {
-          return;
+    if (!map || !reference) return;
+    const apply = () => {
+      const fc = { type: "FeatureCollection" as const, features: features(reference) };
+      const src = map.getSource("reference");
+      if (src instanceof GeoJSONSource) src.setData(fc);
+      else {
+        map.addSource("reference", { type: "geojson", data: fc });
+        map.addLayer({
+          id: "waterways",
+          type: "line",
+          source: "reference",
+          filter: ["==", ["get", "kind"], "waterway"],
+          paint: { "line-color": "#277fb5", "line-width": 2.4, "line-opacity": 0.85 },
+        });
+        map.addLayer({
+          id: "boundary",
+          type: "line",
+          source: "reference",
+          filter: ["==", ["get", "kind"], "administrative-boundary"],
+          paint: { "line-color": "#736b91", "line-width": 2.8, "line-dasharray": [3, 2] },
+        });
+        map.addLayer({
+          id: "trees",
+          type: "circle",
+          source: "reference",
+          filter: ["==", ["get", "kind"], "tree"],
+          paint: {
+            "circle-color": "#20835f",
+            "circle-radius": 4,
+            "circle-stroke-color": "#fff",
+            "circle-stroke-width": 1,
+            "circle-opacity": 0.85,
+          },
+        });
+        for (const id of ["waterways", "boundary", "trees"]) {
+          map.on("click", id, (e: MapLayerMouseEvent) => {
+            const f = e.features?.[0];
+            if (!f) return;
+            new Popup()
+              .setLngLat(e.lngLat)
+              .setHTML(
+                `<strong>${String(f.properties?.name ?? f.properties?.kind ?? "Feature")}</strong><br/>Source: ${String(f.properties?.source ?? "OpenStreetMap")}`,
+              )
+              .addTo(map);
+          });
         }
-
-        const properties = feature.properties ?? {};
-
-        new Popup()
-          .setLngLat(event.lngLat)
-          .setHTML(
-            [
-              `<strong>${String(properties.name ?? "Area")}</strong>`,
-              `Code: ${String(properties.code ?? "")}`,
-              `Type: ${String(properties.area_type ?? "")}`,
-            ].join("<br/>"),
-          )
-          .addTo(activeMap);
-      });
-    }
-
-    if (activeMap.loaded()) {
-      applySpatialLayers();
-    } else {
-      activeMap.once("load", applySpatialLayers);
-    }
-  }, [areas]);
-
+      }
+    };
+    if (map.loaded()) apply();
+    else map.once("load", apply);
+  }, [reference]);
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !liveReference) return;
-    const features = (Array.isArray(liveReference.features) ? liveReference.features : []).filter(
-      (feature): feature is LiveFeature =>
-        Boolean(
-          feature &&
-          typeof feature === "object" &&
-          "geometry" in feature &&
-          "properties" in feature,
-        ),
-    );
-    const collection: LiveFeatureCollection = { type: "FeatureCollection", features };
-
-    const applyLive = () => {
-      const existing = map.getSource("cram-live-reference");
-      if (existing instanceof GeoJSONSource) {
-        existing.setData(collection);
-        return;
-      }
-      map.addSource("cram-live-reference", { type: "geojson", data: collection });
-      map.addLayer({
-        id: "cram-live-waterways",
-        type: "line",
-        source: "cram-live-reference",
-        filter: ["==", ["get", "kind"], "waterway"],
-        paint: { "line-width": 2.2, "line-opacity": 0.8 },
-      });
-      map.addLayer({
-        id: "cram-live-boundary",
-        type: "line",
-        source: "cram-live-reference",
-        filter: ["==", ["get", "kind"], "administrative-boundary"],
-        paint: { "line-width": 3, "line-dasharray": [2, 1] },
-      });
-      map.addLayer({
-        id: "cram-live-trees",
-        type: "circle",
-        source: "cram-live-reference",
-        filter: ["==", ["get", "kind"], "tree"],
-        paint: { "circle-radius": 4, "circle-opacity": 0.75 },
-      });
-      map.addLayer({
-        id: "cram-live-weather",
-        type: "circle",
-        source: "cram-live-reference",
-        filter: ["==", ["get", "kind"], "weather-reference"],
-        paint: { "circle-radius": 8, "circle-stroke-width": 2 },
-      });
-
-      for (const layerId of [
-        "cram-live-trees",
-        "cram-live-waterways",
-        "cram-live-boundary",
-        "cram-live-weather",
-      ]) {
-        map.on("click", layerId, (event: MapLayerMouseEvent) => {
-          const feature = event.features?.[0];
-          if (!feature) return;
-          const properties = feature.properties ?? {};
+    if (!map || !weatherGrid) return;
+    const apply = () => {
+      const fc = { type: "FeatureCollection" as const, features: features(weatherGrid) };
+      const src = map.getSource("weather-grid");
+      if (src instanceof GeoJSONSource) src.setData(fc);
+      else {
+        map.addSource("weather-grid", { type: "geojson", data: fc });
+        map.addLayer({
+          id: "temperature",
+          type: "heatmap",
+          source: "weather-grid",
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["to-number", ["get", "temperature_c"]],
+              22,
+              0.15,
+              31,
+              1,
+            ],
+            "heatmap-intensity": 1.3,
+            "heatmap-radius": 65,
+            "heatmap-opacity": 0.7,
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(50,130,180,0)",
+              0.2,
+              "#5bb7d3",
+              0.48,
+              "#86ca72",
+              0.72,
+              "#f1c34d",
+              1,
+              "#d9534f",
+            ],
+          },
+        });
+        map.addLayer({
+          id: "rainfall",
+          type: "heatmap",
+          source: "weather-grid",
+          layout: { visibility: "none" },
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["to-number", ["get", "precipitation_mm"]],
+              0,
+              0,
+              1,
+              0.3,
+              8,
+              1,
+            ],
+            "heatmap-intensity": 1.4,
+            "heatmap-radius": 65,
+            "heatmap-opacity": 0.75,
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(30,100,180,0)",
+              0.25,
+              "#a5dded",
+              0.55,
+              "#4ba8d6",
+              0.8,
+              "#2d6eb2",
+              1,
+              "#173d78",
+            ],
+          },
+        });
+        map.addLayer({
+          id: "weather-points",
+          type: "circle",
+          source: "weather-grid",
+          paint: {
+            "circle-radius": 4,
+            "circle-color": "#fff",
+            "circle-stroke-color": "#245f7b",
+            "circle-stroke-width": 1.5,
+          },
+        });
+        map.on("click", "weather-points", (e: MapLayerMouseEvent) => {
+          const f = e.features?.[0];
+          if (!f) return;
           new Popup()
-            .setLngLat(event.lngLat)
+            .setLngLat(e.lngLat)
             .setHTML(
-              `<strong>${String(properties.name ?? properties.kind ?? "Reference feature")}</strong><br/>` +
-                `Source: ${String(properties.source ?? "Public reference")}`,
+              `<strong>${String(f.properties?.name ?? "Weather grid")}</strong><br/>Temperature: ${String(f.properties?.temperature_c ?? "—")} °C<br/>Precipitation: ${String(f.properties?.precipitation_mm ?? "—")} mm<br/>Source: Open-Meteo`,
             )
             .addTo(map);
         });
       }
     };
-
-    if (map.loaded()) applyLive();
-    else map.once("load", applyLive);
-  }, [liveReference]);
-
+    if (map.loaded()) apply();
+    else map.once("load", apply);
+  }, [weatherGrid]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    for (const id of [
-      "cram-live-trees",
-      "cram-live-waterways",
-      "cram-live-boundary",
-      "cram-live-weather",
-    ]) {
-      if (map.getLayer(id))
-        map.setLayoutProperty(id, "visibility", liveVisible ? "visible" : "none");
-    }
-  }, [liveVisible, liveReference]);
-
-  function toggleLayer(visible: boolean) {
+    const set = (id: string, on: boolean) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+    };
+    set("temperature", toggles.temperature);
+    set("rainfall", toggles.rainfall);
+    set("trees", toggles.trees);
+    set("waterways", toggles.waterways);
+    set("boundary", toggles.boundary);
+    set("cram-area-fill", toggles.governed);
+    set("cram-area-line", toggles.governed);
+  }, [toggles]);
+  useEffect(() => {
     const map = mapRef.current;
-
-    if (!map) {
-      return;
-    }
-
-    const layerIds = ["cram-area-fill", "cram-area-line", "cram-geoserver-published"];
-
-    for (const id of layerIds) {
-      if (map.getLayer(id)) {
-        map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+    if (!map || !areas.length) return;
+    const fs = areas
+      .filter((a) => a.geometry)
+      .map((a) => ({
+        type: "Feature" as const,
+        id: a.id,
+        properties: { name: a.name, code: a.code, area_type: a.area_type },
+        geometry: a.geometry as never,
+      }));
+    const apply = () => {
+      const fc = { type: "FeatureCollection" as const, features: fs };
+      const src = map.getSource("governed");
+      if (src instanceof GeoJSONSource) src.setData(fc);
+      else {
+        map.addSource("governed", { type: "geojson", data: fc });
+        map.addLayer({
+          id: "cram-area-fill",
+          type: "fill",
+          source: "governed",
+          paint: { "fill-color": "#1f9d78", "fill-opacity": 0.13 },
+        });
+        map.addLayer({
+          id: "cram-area-line",
+          type: "line",
+          source: "governed",
+          paint: { "line-color": "#13725a", "line-width": 2 },
+        });
       }
-    }
-  }
-
+    };
+    if (map.loaded()) apply();
+    else map.once("load", apply);
+  }, [areas]);
+  const toggle = (key: keyof Toggles) => setToggles((s) => ({ ...s, [key]: !s[key] }));
   return (
-    <main className="map-page">
+    <div className="map-page">
       <aside>
-        <h1>CRAM GIS</h1>
-
-        <p>Foundation map and spatial-layer verification.</p>
-
-        <Link to="/profile">Profile</Link>
-
-        <h2>Layers</h2>
-
-        <label className="map-live-toggle">
-          <input
-            type="checkbox"
-            checked={liveVisible}
-            onChange={(event) => setLiveVisible(event.target.checked)}
-          />
-          Live public reference layers
-        </label>
-        <div className="map-legend">
-          <span>Weather • Open-Meteo</span>
-          <span>Trees & waterways • OpenStreetMap</span>
-          <span>Boundary • OpenStreetMap reference</span>
-        </div>
-
-        {layers.map((layer) => (
-          <label key={layer.id}>
-            <input
-              type="checkbox"
-              defaultChecked
-              onChange={(event) => toggleLayer(event.target.checked)}
-            />{" "}
-            {layer.name}
-          </label>
-        ))}
-
-        <p className="map-note">
-          Live public layers are situational reference data. Authoritative FCC/agency layers remain
-          governed through CRAM.
+        <p className="eyebrow">Spatial intelligence</p>
+        <h1>GIS Explorer</h1>
+        <p className="map-intro">
+          Combine live public reference data with governed FCC spatial layers.
         </p>
-
-        {error && <p className="map-error">{error}</p>}
+        <div className="map-side-section">
+          <h2>Layers</h2>
+          {(
+            [
+              ["temperature", "Temperature surface", "heat"],
+              ["rainfall", "Rainfall surface", "rain"],
+              ["trees", "Trees", "tree"],
+              ["waterways", "Waterways / drainage", "water"],
+              ["boundary", "Administrative boundary", "boundary"],
+              ["governed", "Governed CRAM layers", "governed"],
+            ] as const
+          ).map(([key, label, kind]) => (
+            <label className="map-layer-row" key={key}>
+              <input type="checkbox" checked={toggles[key]} onChange={() => toggle(key)} />
+              <span className={`legend-swatch ${kind}`} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="map-side-section">
+          <h2>Legend & provenance</h2>
+          <p className="map-note">
+            <strong>Public reference:</strong> Open-Meteo and OpenStreetMap provide situational
+            context.
+          </p>
+          <p className="map-note">
+            <strong>Governed:</strong> FCC/partner layers remain authoritative CRAM records.
+          </p>
+        </div>
+        {error && <div className="map-error">{error}</div>}
       </aside>
-
-      <section className="map-stage">
-        <div ref={mapNode} className="map-canvas" />
-
-        <output className="map-coordinates">{coordinates}</output>
+      <section className="map-canvas">
+        <div className="coordinate-readout">{coordinates}</div>
+        <div className="map-overlay-title">
+          <strong>Freetown integrated climate map</strong>
+          <span>Temperature · rainfall · trees · waterways · governed layers</span>
+        </div>
+        <div ref={node} className="map-root" />
       </section>
-    </main>
+    </div>
   );
 }

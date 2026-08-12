@@ -14,15 +14,18 @@ from app.services.public_data import (
     gis_reference_features,
     nasa_power_freetown,
     open_meteo_freetown,
+    open_meteo_freetown_grid,
     open_meteo_historical_freetown,
     osm_freetown,
     usgs_stac_freetown,
+    world_bank_climate_resources,
     world_bank_sierra_leone,
 )
 
 router = APIRouter(prefix="/public-data", tags=["public-reference-data"])
 AnalyticsReader = Annotated[User, Depends(require_permission("analytics.read"))]
 GISReader = Annotated[User, Depends(require_permission("gis.read"))]
+ReportsReader = Annotated[User, Depends(require_permission("reports.read"))]
 
 
 def _safe(loader: Callable[[], dict[str, object]]) -> dict[str, object]:
@@ -40,6 +43,11 @@ def weather_open_meteo(_: AnalyticsReader) -> dict[str, object]:
 @router.get("/weather/history")
 def weather_history(_: AnalyticsReader) -> dict[str, object]:
     return _safe(open_meteo_historical_freetown)
+
+
+@router.get("/weather/grid")
+def weather_grid(_: AnalyticsReader) -> dict[str, object]:
+    return _safe(open_meteo_freetown_grid)
 
 
 @router.get("/climate/copernicus-cds")
@@ -60,6 +68,11 @@ def spatial_osm(_: AnalyticsReader) -> dict[str, object]:
 @router.get("/vulnerability/world-bank")
 def vulnerability_world_bank(_: AnalyticsReader) -> dict[str, object]:
     return _safe(world_bank_sierra_leone)
+
+
+@router.get("/knowledge/world-bank")
+def knowledge_world_bank(_: ReportsReader) -> dict[str, object]:
+    return _safe(world_bank_climate_resources)
 
 
 @router.get("/earth-observation/copernicus")

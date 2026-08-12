@@ -1,0 +1,205 @@
+.report-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
+  gap: 16px;
+  margin: 14px 0;
+}
+.report-builder,
+.report-preview {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+.section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 18px;
+}
+.section-title > span {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--green-soft), var(--blue-soft));
+  display: grid;
+  place-items: center;
+  color: var(--green-deep);
+}
+.section-title svg {
+  width: 20px;
+}
+.section-title h2 {
+  margin: 0;
+}
+.section-title p,
+.report-builder > label + * {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.report-builder {
+  display: grid;
+  gap: 14px;
+}
+.report-builder label {
+  display: grid;
+  gap: 7px;
+}
+.report-template-help {
+  padding: 12px 14px;
+  background: #f6fbfb;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.report-template-help strong {
+  color: var(--ink);
+}
+.report-template-help p {
+  margin: 3px 0 0;
+  font-size: 0.73rem;
+}
+.report-builder fieldset {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 12px;
+}
+.report-builder legend {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.module-checks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.module-checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f6fafb;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  text-transform: capitalize;
+}
+.module-checks input {
+  width: auto;
+}
+.report-generate {
+  justify-self: start;
+}
+.report-preview {
+  background: linear-gradient(145deg, #f8fffc, #f5faff);
+}
+.report-preview > p:last-child {
+  font-size: 0.73rem;
+  color: var(--muted);
+}
+.preview-cover {
+  margin: 15px 0;
+  padding: 28px 22px;
+  min-height: 220px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #173246, #1d6576);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  overflow: hidden;
+}
+.preview-cover:before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  right: -35px;
+  top: -45px;
+}
+.preview-cover svg {
+  width: 28px;
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+.preview-cover span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #bcebdd;
+}
+.preview-cover strong {
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+}
+.preview-cover small {
+  color: #d2e6ea;
+}
+.report-cards {
+  display: grid;
+  gap: 9px;
+}
+.report-history-card {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e6eef0;
+  border-radius: 11px;
+}
+.report-file-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+}
+.report-file-icon svg {
+  width: 20px;
+}
+.report-history-card strong,
+.report-history-card small {
+  display: block;
+}
+.report-history-card strong {
+  text-transform: capitalize;
+  color: var(--ink);
+  font-size: 0.77rem;
+}
+.report-history-card small {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin: 3px 0 5px;
+}
+@media (max-width: 900px) {
+  .report-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .report-history-card {
+    grid-template-columns: 36px 1fr;
+  }
+  .report-history-card > button {
+    grid-column: 1/-1;
+  }
+  .module-checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.report-builder.read-only {
+  opacity: 0.82;
+}
+.report-builder.read-only input,
+.report-builder.read-only select,
+.report-builder.read-only fieldset {
+  pointer-events: none;
+}

@@ -34,6 +34,12 @@ def _as_list(value: object) -> list[object]:
     return list(value)
 
 
+def _clean_number(value: object) -> object:
+    if isinstance(value, (int, float)) and float(value) <= -900:
+        return None
+    return value
+
+
 def _cached(key: str, ttl_seconds: int, loader: Callable[[], object]) -> object:
     now = time.monotonic()
     cached = _CACHE.get(key)
@@ -177,6 +183,133 @@ def open_meteo_historical_freetown(years: int = 5) -> dict[str, object]:
     return _cached(f"open-meteo-history-{years}", 21600, load)  # type: ignore[return-value]
 
 
+def open_meteo_freetown_grid() -> dict[str, object]:
+    """Return a real public-reference weather surface across greater Freetown.
+
+    Values come directly from Open-Meteo grid cells. They are contextual observations,
+    not an FCC-approved heat or flood risk index.
+    """
+
+    points = [
+        ("Central Freetown", 8.4840, -13.2340),
+        ("Aberdeen", 8.4932, -13.2892),
+        ("Lumley", 8.4565, -13.2800),
+        ("Congo Cross", 8.4742, -13.2560),
+        ("Brookfields", 8.4650, -13.2450),
+        ("Kissy", 8.4710, -13.1960),
+        ("Wellington", 8.4370, -13.1700),
+        ("Calaba Town", 8.4045, -13.1680),
+        ("Regent", 8.3945, -13.2230),
+        ("Goderich", 8.4250, -13.2860),
+        ("Juba", 8.4440, -13.2730),
+        ("Hastings", 8.3915, -13.1430),
+    ]
+
+    def load() -> dict[str, object]:
+        features: list[dict[str, object]] = []
+        errors: list[str] = []
+        for name, latitude, longitude in points:
+            try:
+                payload = _request_json(
+                    "https://api.open-meteo.com/v1/forecast",
+                    query={
+                        "latitude": str(latitude),
+                        "longitude": str(longitude),
+                        "current": "temperature_2m,relative_humidity_2m,precipitation,rain",
+                        "timezone": "UTC",
+                    },
+                    timeout=12,
+                )
+                current = _as_dict(_as_dict(payload).get("current"))
+                features.append(
+                    _feature(
+                        "Point",
+                        [longitude, latitude],
+                        {
+                            "kind": "weather-grid",
+                            "name": name,
+                            "source": "Open-Meteo",
+                            "temperature_c": _clean_number(current.get("temperature_2m")),
+                            "humidity_pct": _clean_number(current.get("relative_humidity_2m")),
+                            "precipitation_mm": _clean_number(current.get("precipitation")),
+                            "rain_mm": _clean_number(current.get("rain")),
+                            "observed_at": current.get("time"),
+                        },
+                    )
+                )
+            except PublicDataError as exc:
+                errors.append(f"{name}: {exc}")
+        if not features:
+            raise PublicDataError("Open-Meteo grid could not retrieve any Freetown cells.")
+        return {
+            "type": "FeatureCollection",
+            "features": features,
+            "record_count": len(features),
+            "retrieved_at": datetime.now(UTC).isoformat(),
+            "errors": errors,
+            "governance": "Public-reference weather surface only; not an approved FCC heat or flood risk index.",
+        }
+
+    return _cached("open-meteo-freetown-grid", 600, load)  # type: ignore[return-value]
+
+
+def world_bank_climate_resources(limit: int = 12) -> dict[str, object]:
+    """Return recent World Bank climate/disaster-risk knowledge resources.
+
+    The Documents & Reports API is a public World Bank disclosure/search API.
+    Results remain external references until a CRAM user explicitly saves one
+    into the governed Knowledge Hub.
+    """
+
+    def load() -> dict[str, object]:
+        payload = _request_json(
+            "https://search.worldbank.org/api/v2/wds",
+            query={
+                "format": "json",
+                "qterm": "climate risk resilience urban flood heat Sierra Leone",
+                "rows": str(max(1, min(limit, 25))),
+                "os": "0",
+            },
+            timeout=25,
+        )
+        root = _as_dict(payload)
+        documents = root.get("documents")
+        candidates: list[dict[str, object]] = []
+        if isinstance(documents, dict):
+            candidates = [_as_dict(value) for value in documents.values()]
+        elif isinstance(documents, list):
+            candidates = [_as_dict(value) for value in documents]
+
+        records: list[dict[str, object]] = []
+        for item in candidates:
+            title = item.get("display_title") or item.get("title") or item.get("docna")
+            if not title:
+                continue
+            url = item.get("url") or item.get("pdfurl") or item.get("txturl")
+            records.append(
+                {
+                    "external_id": item.get("id") or item.get("docid"),
+                    "title": str(title),
+                    "organisation": "World Bank",
+                    "resource_type": item.get("docty") or item.get("majdocty") or "Publication",
+                    "publication_date": item.get("docdt") or item.get("disclosure_date"),
+                    "authors": item.get("authr"),
+                    "url": url,
+                    "source": "World Bank Documents & Reports API",
+                    "tags": ["climate risk", "resilience", "public reference"],
+                }
+            )
+        return {
+            "source": "World Bank Documents & Reports API",
+            "records": records[:limit],
+            "record_count": len(records[:limit]),
+            "retrieved_at": datetime.now(UTC).isoformat(),
+            "governance": "External public knowledge references; save to CRAM to create a governed repository record.",
+        }
+
+    return _cached(f"world-bank-climate-resources-{limit}", 21600, load)  # type: ignore[return-value]
+
+
 def copernicus_cds_readiness() -> dict[str, object]:
     settings = get_settings()
     configured = settings.copernicus_cds_key is not None and bool(
@@ -261,7 +394,7 @@ def nasa_power_freetown(days: int = 45) -> dict[str, object]:
 
 def _series_value(parameters: dict[str, object], code: str, day: str) -> object:
     series = parameters.get(code)
-    return series.get(day) if isinstance(series, dict) else None
+    return _clean_number(series.get(day)) if isinstance(series, dict) else None
 
 
 def world_bank_sierra_leone() -> dict[str, object]:
