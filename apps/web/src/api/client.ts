@@ -78,6 +78,23 @@ const userAdminSchema = z.object({
 export type RoleSummary = z.infer<typeof roleSummarySchema>;
 export type UserAdmin = z.infer<typeof userAdminSchema>;
 
+const assistantCitationSchema = z.object({
+  label: z.string(),
+  title: z.string(),
+  source_type: z.string(),
+  url: z.string().nullable(),
+});
+
+const assistantAnswerSchema = z.object({
+  answer: z.string(),
+  model: z.string(),
+  grounded: z.boolean(),
+  citations: z.array(assistantCitationSchema),
+});
+
+export type AssistantCitation = z.infer<typeof assistantCitationSchema>;
+export type AssistantAnswer = z.infer<typeof assistantAnswerSchema>;
+
 export class ApiError extends Error {
   public readonly status?: number;
 
@@ -183,6 +200,19 @@ export const api = {
     requestJson("/api/v1/auth/me", currentUserSchema, {
       headers: authHeaders(accessToken),
     }),
+  askAssistant: (accessToken: string, question: string, currentPath?: string) =>
+    requestJson("/api/v1/assistant/ask", assistantAnswerSchema, {
+      method: "POST",
+      headers: {
+        ...authHeaders(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question,
+        current_path: currentPath ?? null,
+      }),
+    }),
+
   logout: async (accessToken: string) => {
     const response = await fetch(`${env.VITE_API_URL}/api/v1/auth/logout`, {
       method: "POST",

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.assistant import router as assistant_router
 from app.api.v1.endpoints.audit import router as audit_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.datasets import router as datasets_router
@@ -22,6 +23,7 @@ api_router.include_router(datasets_router)
 api_router.include_router(organisations_router)
 api_router.include_router(users_router)
 api_router.include_router(public_data_router)
+api_router.include_router(assistant_router)
 
 api_router.include_router(roadmap_router)
 api_router.include_router(engineering_router)

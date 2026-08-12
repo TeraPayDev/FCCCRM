@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api, type CurrentUser } from "../api/client";
 import { clearTokens, loadTokens } from "../auth/session";
 import { Icon, type IconName } from "./Icon";
+import { AssistantWidget } from "./AssistantWidget";
 import "./app-layout.css";
 
 type NavItem = readonly [string, string, IconName, string?];
@@ -211,6 +212,8 @@ export function AppLayout() {
           <span>Freetown City Council • Yestech Solutions SL Ltd</span>
         </footer>
       </div>
+
+      <AssistantWidget />
     </div>
   );
 }
