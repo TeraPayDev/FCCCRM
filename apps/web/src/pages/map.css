@@ -77,3 +77,21 @@
     border-bottom: 1px solid var(--border);
   }
 }
+.map-live-toggle {
+  padding: 10px 11px;
+  border: 1px solid #d8e9e4;
+  border-radius: 9px;
+  background: #f2fbf7;
+  font-weight: 750;
+}
+.map-live-toggle input {
+  width: auto !important;
+  margin: 0 7px 0 0 !important;
+}
+.map-legend {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 15px;
+  font-size: 0.68rem;
+  color: var(--muted);
+}

@@ -24,6 +24,7 @@ from app.services.predictive import (
     vulnerability_scenario,
 )
 from app.services.processing import create_job, enqueue
+from app.services.public_data import PUBLIC_CONNECTORS, PublicDataError, run_public_connector
 
 router = APIRouter(tags=["engineering-extension"])
 AnalyticsReader = Annotated[User, Depends(require_permission("analytics.read"))]
@@ -149,7 +150,7 @@ def run_due(_: AnalyticsManager) -> dict[str, object]:
                 s,
                 job_type=item.job_type,
                 dataset_version_id=item.dataset_version_id,
-                parameters=item.parameters,
+                parameters={**item.parameters, "_schedule_id": str(item.id)},
                 idempotency_key=key,
             )
             item.last_run_at = now
@@ -218,7 +219,7 @@ def create_connector(payload: ConnectorCreate, _: AdminUser) -> dict[str, object
 
 
 @router.get("/integrations/connectors")
-def connectors(_: AdminUser) -> list[dict[str, object]]:
+def connectors(_: AnalyticsReader) -> list[dict[str, object]]:
     s = get_db_session()
     try:
         rows = s.scalars(
@@ -247,24 +248,153 @@ def test_connector(connector_id: uuid.UUID, _: AdminUser) -> dict[str, object]:
         connector = s.get(IntegrationConnector, connector_id)
         if connector is None:
             raise HTTPException(404, "Connector not found.")
-        if not connector.sandbox_mode:
+        started = datetime.now(UTC)
+        if connector.connector_type in {str(item["connector_type"]) for item in PUBLIC_CONNECTORS}:
+            try:
+                result = run_public_connector(connector.connector_type)
+            except PublicDataError as exc:
+                run = IntegrationRun(
+                    connector_id=connector.id,
+                    status="FAILED",
+                    records_received=0,
+                    started_at=started,
+                    completed_at=datetime.now(UTC),
+                    error_message=str(exc)[:4000],
+                    run_metadata={"mode": "public-live"},
+                )
+                s.add(run)
+                s.commit()
+                raise HTTPException(502, str(exc)) from exc
+        elif connector.sandbox_mode:
+            result = sandbox_pull(connector.institution, connector.configuration)
+        else:
             raise HTTPException(
                 409,
-                "Live connector execution is disabled until institution credentials/contracts are approved.",
+                "This live connector type is not enabled. Configure an approved public connector or institutional adapter.",
             )
-        started = datetime.now(UTC)
-        result = sandbox_pull(connector.institution, connector.configuration)
         run = IntegrationRun(
             connector_id=connector.id,
             status="SUCCEEDED",
             records_received=int(str(result["record_count"])),
             started_at=started,
             completed_at=datetime.now(UTC),
-            run_metadata={"mode": "sandbox"},
+            run_metadata={"mode": "public-live" if not connector.sandbox_mode else "sandbox"},
         )
         s.add(run)
         s.commit()
         return result
+    finally:
+        s.close()
+
+
+@router.get("/integrations/runs")
+def integration_runs(_: AnalyticsReader) -> list[dict[str, object]]:
+    s = get_db_session()
+    try:
+        rows = s.execute(
+            select(IntegrationRun, IntegrationConnector)
+            .join(IntegrationConnector, IntegrationConnector.id == IntegrationRun.connector_id)
+            .order_by(IntegrationRun.started_at.desc())
+            .limit(100)
+        ).all()
+        return [
+            {
+                "id": run.id,
+                "connector": connector.code,
+                "institution": connector.institution,
+                "status": run.status,
+                "records_received": run.records_received,
+                "started_at": run.started_at,
+                "completed_at": run.completed_at,
+                "error_message": run.error_message,
+            }
+            for run, connector in rows
+        ]
+    finally:
+        s.close()
+
+
+@router.post("/integrations/public/bootstrap")
+def bootstrap_public_integrations(_: AdminUser) -> dict[str, object]:
+    now = datetime.now(UTC)
+    s = get_db_session()
+    created = 0
+    updated = 0
+    schedules_created = 0
+    try:
+        legacy = s.scalar(
+            select(IntegrationConnector).where(IntegrationConnector.code == "SLMET-SANDBOX")
+        )
+        if legacy is not None:
+            legacy.is_active = False
+        legacy_schedule = s.scalar(
+            select(ProcessingSchedule).where(ProcessingSchedule.code == "SLMET-WEATHER-SCHEDULE")
+        )
+        if legacy_schedule is not None:
+            legacy_schedule.is_active = False
+
+        for definition in PUBLIC_CONNECTORS:
+            code = str(definition["code"])
+            connector = s.scalar(
+                select(IntegrationConnector).where(IntegrationConnector.code == code)
+            )
+            if connector is None:
+                connector = IntegrationConnector(
+                    code=code,
+                    institution=str(definition["institution"]),
+                    connector_type=str(definition["connector_type"]),
+                    base_url=str(definition["base_url"]),
+                    configuration={
+                        "location": "Freetown, Sierra Leone",
+                        "governance": "PUBLIC_REFERENCE",
+                    },
+                    sandbox_mode=False,
+                    is_active=True,
+                )
+                s.add(connector)
+                s.flush()
+                created += 1
+            else:
+                connector.institution = str(definition["institution"])
+                connector.connector_type = str(definition["connector_type"])
+                connector.base_url = str(definition["base_url"])
+                connector.sandbox_mode = False
+                connector.is_active = True
+                updated += 1
+
+            schedule_code = f"PUBLIC-{code}"
+            schedule = s.scalar(
+                select(ProcessingSchedule).where(ProcessingSchedule.code == schedule_code)
+            )
+            interval_minutes = int(str(definition["interval_minutes"]))
+            if schedule is None:
+                schedule = ProcessingSchedule(
+                    code=schedule_code,
+                    job_type="PUBLIC_CONNECTOR_SYNC",
+                    dataset_version_id=None,
+                    interval_minutes=interval_minutes,
+                    parameters={"connector_id": str(connector.id)},
+                    next_run_at=now,
+                    is_active=True,
+                )
+                s.add(schedule)
+                schedules_created += 1
+            else:
+                schedule.job_type = "PUBLIC_CONNECTOR_SYNC"
+                schedule.dataset_version_id = None
+                schedule.interval_minutes = interval_minutes
+                schedule.parameters = {"connector_id": str(connector.id)}
+                schedule.is_active = True
+                if schedule.next_run_at is None:
+                    schedule.next_run_at = now
+                updated += 1
+        s.commit()
+        return {
+            "created_connectors": created,
+            "updated_connectors": updated,
+            "created_schedules": schedules_created,
+            "public_connector_count": len(PUBLIC_CONNECTORS),
+        }
     finally:
         s.close()
 

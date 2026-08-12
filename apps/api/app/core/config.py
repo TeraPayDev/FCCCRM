@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     auth_failed_login_limit: int = 5
     auth_lock_minutes: int = 15
 
+    copernicus_cds_url: str = "https://cds.climate.copernicus.eu/api"
+    copernicus_cds_key: SecretStr | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

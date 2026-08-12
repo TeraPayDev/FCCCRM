@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { env } from "../config/env";
+import { loadTokens, saveTokens, signalSessionExpired } from "../auth/session";
 
 const healthSchema = z.object({
   status: z.string(),
@@ -76,14 +77,59 @@ async function errorMessage(response: Response): Promise<string> {
   return message;
 }
 
-async function requestJson<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${env.VITE_API_URL}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
+let refreshPromise: Promise<TokenPair | null> | null = null;
+
+async function refreshSession(): Promise<TokenPair | null> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const session = loadTokens();
+    if (!session?.refresh_token) {
+      signalSessionExpired();
+      return null;
+    }
+
+    const response = await fetch(`${env.VITE_API_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+
+    if (!response.ok) {
+      signalSessionExpired();
+      return null;
+    }
+
+    const tokens = tokenPairSchema.parse(await response.json());
+    saveTokens(tokens);
+    return tokens;
+  })().finally(() => {
+    refreshPromise = null;
   });
+
+  return refreshPromise;
+}
+
+async function fetchWithSessionRetry(path: string, init?: RequestInit): Promise<Response> {
+  const url = `${env.VITE_API_URL}${path}`;
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+
+  let response = await fetch(url, { ...init, headers });
+  if (response.status !== 401 || !headers.has("Authorization")) return response;
+
+  const refreshed = await refreshSession();
+  if (!refreshed) {
+    throw new ApiError("Your session expired. Please sign in again.", 401);
+  }
+
+  headers.set("Authorization", `Bearer ${refreshed.access_token}`);
+  response = await fetch(url, { ...init, headers });
+  return response;
+}
+
+async function requestJson<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
+  const response = await fetchWithSessionRetry(path, init);
 
   if (!response.ok) {
     throw new ApiError(await errorMessage(response), response.status);
@@ -429,8 +475,8 @@ export const dataPlatformApi = {
   uploadCsv: async (accessToken: string, datasetId: string, file: File, sourceId?: string) => {
     const params = new URLSearchParams({ filename: file.name });
     if (sourceId) params.set("source_id", sourceId);
-    const response = await fetch(
-      `${env.VITE_API_URL}/api/v1/datasets/${datasetId}/uploads?${params.toString()}`,
+    const response = await fetchWithSessionRetry(
+      `/api/v1/datasets/${datasetId}/uploads?${params.toString()}`,
       {
         method: "POST",
         headers: { ...authHeaders(accessToken), "Content-Type": file.type || "text/csv" },
